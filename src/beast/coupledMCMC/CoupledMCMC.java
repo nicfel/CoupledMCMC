@@ -1,4 +1,4 @@
-package beast.inference;
+package beast.coupledMCMC;
 
 
 import beast.core.*;
@@ -27,10 +27,10 @@ import java.util.List;
 		"Note that log file names should have $(seed) in their name so " +
 		"that the first chain uses the actual seed in the file name and all subsequent chains add one to it." +
 		"Furthermore, the log and tree log should have the same sample frequency.")
-public class MCMCMC extends MCMC {
+public class CoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 1000);
-	public Input<String> heatedMCMCClassInput = new Input<String>("heatedMCMCClass", "Name of the class used for heated chains", HeatedMCMC.class.getName());
+	public Input<String> heatedMCMCClassInput = new Input<String>("heatedMCMCClass", "Name of the class used for heated chains", HeatedChain.class.getName());
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","/tmp/");
 	public Input<Double> temperatureScalerInput = new Input<>("temperatureScaler","temperature scaler, the higher this value, the hotter the chains",0.1);
 	public Input<String> stateFileNameInput = new Input<>("stateFileName","name of the state file", "state.backup.xml");
@@ -44,7 +44,7 @@ public class MCMCMC extends MCMC {
 	
 	
 	/** plugins representing MCMC with model, loggers, etc **/
-	HeatedMCMC [] chains;
+	HeatedChain [] chains;
 	/** threads for running MCMC chains **/
 	Thread [] threads;
 	/** keep track of time taken between logs to estimate speed **/
@@ -63,7 +63,7 @@ public class MCMCMC extends MCMC {
 		if (nrOfChainsInput.get() == 1) {
 			Log.warning.println("Warning: MCMCMC needs at least 2 chains to be effective, but chains=1. Running plain MCMC.");
 		}
-		chains = new HeatedMCMC[nrOfChainsInput.get()];
+		chains = new HeatedChain[nrOfChainsInput.get()];
 		
 		resampleEvery = resampleEveryInput.get();
 		
@@ -86,7 +86,7 @@ public class MCMCMC extends MCMC {
 	
         String sMCMCMC = this.getClass().getName();
 		while (sMCMCMC.length() > 0) {
-			sXML = sXML.replaceAll("\\b"+MCMCMC.class.getName()+"\\b", heatedMCMCClassInput.get());
+			sXML = sXML.replaceAll("\\b"+ HeatedChain.class.getName()+ "\\b", heatedMCMCClassInput.get());
 			if (sMCMCMC.indexOf('.') >= 0) {
 				sMCMCMC = sMCMCMC.substring(sMCMCMC.indexOf('.')+1);
 			} else {
@@ -110,7 +110,7 @@ public class MCMCMC extends MCMC {
 		        outfile.write(sXML2);
 		        outfile.close();
 				
-				chains[i] = (HeatedMCMC) parser.parseFragment(sXML2, true);
+				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
 	
 				// remove all loggers, except for main chain
 				if (i != 0) {
@@ -255,7 +255,7 @@ public class MCMCMC extends MCMC {
 		}
 	} // run
 	
-	private void assignState(HeatedMCMC mcmc1, HeatedMCMC mcmc2) {
+	private void assignState(HeatedChain mcmc1, HeatedChain mcmc2) {
 		State state1 = mcmc1.startStateInput.get();
 		State state2 = mcmc2.startStateInput.get();
 		List<StateNode> stateNodes1 = state1.stateNodeInput.get();
