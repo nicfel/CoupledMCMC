@@ -39,20 +39,18 @@ public class HeatedChain extends MCMC {
 
 	// set chain number for a given lambda
 	
-	public void setChainNr(int i, int resampleEvery, double lambda) {
-		LAMBDA = lambda; // unneeded step, but still here
-		temperature = 1 + i  * LAMBDA;
+	public void setChainNr(int i, int resampleEvery, double temperature) {
+		this.temperature = 1 + i  * temperature;
 		this.resampleEvery = resampleEvery;
 	}
 	
 	public double getTemperature(){
 		return temperature;
-	}
+	}	
 	
-//	public void setChainNr(int i, int resampleEvery) {
-//		temperature = 1 + i * LAMBDA;
-//		this.resampleEvery = resampleEvery;
-//	}
+	public void setTemperature(int i, double temperature){
+		this.temperature = 1 + i  * temperature;
+	}	
 
 
 	protected double calcCurrentLogLikelihoodRobustly() {
@@ -60,11 +58,6 @@ public class HeatedChain extends MCMC {
 		return getCurrentLogLikelihood();
 	};
 
-	
-//	@Override
-//	protected void doLoop() throws Exception {
-//	//	runTillResample();
-//	}
 	
     @Override
     public void run() throws IOException, SAXException, ParserConfigurationException {
@@ -100,9 +93,6 @@ public class HeatedChain extends MCMC {
         // do the sampling
         logAlpha = 0;
         debugFlag = Boolean.valueOf(System.getProperty("beast.debug"));
-
-//        System.err.println("Start state:");
-//        System.err.println(state.toString());
 
         System.err.println("Start likelihood: " + oldLogLikelihood + " " + (nInitialisationAttempts > 1 ? "after " + nInitialisationAttempts + " initialisation attempts" : ""));
         if (Double.isInfinite(oldLogLikelihood) || Double.isNaN(oldLogLikelihood)) {
