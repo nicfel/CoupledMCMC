@@ -30,10 +30,9 @@ import java.util.List;
 public class CoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
-//	public Input<String> heatedMCMCClassInput = new Input<String>("heatedMCMCClass", "Name of the class used for heated chains", HeatedChain.class.getName());
-	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","/tmp/");
+	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
 	public Input<Double> temperatureScalerInput = new Input<>("temperatureScaler","temperature scaler, the higher this value, the hotter the chains",0.01);
-	public Input<String> stateFileNameInput = new Input<>("stateFileName","name of the state file", "state.backup.xml");
+	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
 
 	
 	
@@ -73,11 +72,9 @@ public class CoupledMCMC extends MCMC {
 	private void initRun(){
 		String sXML = new XMLProducer().toXML(this);
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("heatedMCMCClass=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("temperatureScaler=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("stateFileName=['\"][^ ]*['\"]", "");
 
 	
         String sMCMCMC = this.getClass().getName();
@@ -97,32 +94,38 @@ public class CoupledMCMC extends MCMC {
 		for (int i = 0; i < chains.length; i++) {
 			XMLParser parser = new XMLParser();
 			String sXML2 = sXML;
-			sXML2 = sXML2.replaceAll("\\$\\(seed\\)", nSeed+i+"");
+			if (i>0){
+				sXML2 = sXML2.replaceAll("fileName=\"", "fileName=\"chain" + i+ "");
+			}
 			
 			try {
-		        FileWriter outfile = new FileWriter(new File(tempDirInput.get() + "MCMCMC.xml"));
+		        FileWriter outfile = new FileWriter(new File(tempDirInput.get() + stateFileName.replace("xml.state", "chain" + i + ".xml") ));
 		        outfile.write(sXML2);
 		        outfile.close();
 				
 				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
 	
 				// remove all loggers, except for main chain
-				if (i != 0) {
-					chains[i].loggersInput.get().clear();
-				}
-				String chainFileName = stateFileNameInput.get()  + "." + i + ".state";
+				if (i != 0 && !logHeatedChainsInput.get()) {
+					for (int j = 0; j < chains[i].loggersInput.get().size(); j++){
+						if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog"))
+							chains[i].loggersInput.get().remove(j);
+						
+//						chains[i].loggersInput.get().clear();
+					}
+					System.out.println(chains[i].loggersInput.get());
+					System.exit(0);
+				}			
 				
-				
-				chains[i].setChainNr(i, resampleEvery, temperatureScalerInput.get());
-				chains[i].setStateFile(stateFileName + "." + i, restoreFromFile);
-
-				
+				// initialize each chain individually
+				chains[i].setChainNr(i, resampleEvery, temperatureScaler);
+				chains[i].setStateFile(stateFileName.replace(".state", "." + i + "state"), restoreFromFile);				
 				
 				chains[i].run();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
-		}
+		}		
 		
 		// get a copy of the list of state nodes to facilitate swapping states
 		tmpStateNodes = startStateInput.get().stateNodeInput.get();
@@ -154,9 +157,7 @@ public class CoupledMCMC extends MCMC {
 		
 		int totalSwaps = 0;
 		int successfullSwaps = 0, successfullSwaps0 = 0;
-//		for (HeatedMCMC chain:m_chains) {
-//			chain.startStateInput.get().setEverythingDirty(true);
-//		}
+
 		for (int sampleNr = 0; sampleNr < chainLength; sampleNr += resampleEvery) {
 			long startTime = System.currentTimeMillis();
 			
