@@ -29,18 +29,17 @@ import java.util.List;
 		"Furthermore, the log and tree log should have the same sample frequency.")
 public class CoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
-	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 1000);
-	public Input<String> heatedMCMCClassInput = new Input<String>("heatedMCMCClass", "Name of the class used for heated chains", HeatedChain.class.getName());
+	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
+//	public Input<String> heatedMCMCClassInput = new Input<String>("heatedMCMCClass", "Name of the class used for heated chains", HeatedChain.class.getName());
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","/tmp/");
-	public Input<Double> temperatureScalerInput = new Input<>("temperatureScaler","temperature scaler, the higher this value, the hotter the chains",0.1);
+	public Input<Double> temperatureScalerInput = new Input<>("temperatureScaler","temperature scaler, the higher this value, the hotter the chains",0.01);
 	public Input<String> stateFileNameInput = new Input<>("stateFileName","name of the state file", "state.backup.xml");
 
 	
 	
 	// nr of samples between re-arranging states
-	int resampleEvery = 10;
-	
-	double temperatureScaler = 0.01;
+	int resampleEvery;	
+	double temperatureScaler;
 	
 	
 	/** plugins representing MCMC with model, loggers, etc **/
@@ -63,21 +62,18 @@ public class CoupledMCMC extends MCMC {
 		if (nrOfChainsInput.get() == 1) {
 			Log.warning.println("Warning: MCMCMC needs at least 2 chains to be effective, but chains=1. Running plain MCMC.");
 		}
+		// initialize the differently heated chains
 		chains = new HeatedChain[nrOfChainsInput.get()];
 		
-		resampleEvery = resampleEveryInput.get();
-		
+		resampleEvery = resampleEveryInput.get();		
 		temperatureScaler = temperatureScalerInput.get();
-
-		// the difference between the various chains is
-		// 1. it runs an MCMC, not a  MultiplMCMC
-		// 2. remove chains attribute
-		// 3. output logs change for every chain
-		// 4. log to stdout is removed to prevent clutter on stdout
 		
+	} // initAndValidate
+	
+	private void initRun(){
 		String sXML = new XMLProducer().toXML(this);
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("heatedMCMCClass=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceAll("heatedMCMCClass=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("temperatureScaler=['\"][^ ]*['\"]", "");
@@ -86,18 +82,16 @@ public class CoupledMCMC extends MCMC {
 	
         String sMCMCMC = this.getClass().getName();
 		while (sMCMCMC.length() > 0) {
-			sXML = sXML.replaceAll("\\b"+ HeatedChain.class.getName()+ "\\b", heatedMCMCClassInput.get());
+			sXML = sXML.replaceAll("\\b" + CoupledMCMC.class.getName() + "\\b", HeatedChain.class.getName());
 			if (sMCMCMC.indexOf('.') >= 0) {
-				sMCMCMC = sMCMCMC.substring(sMCMCMC.indexOf('.')+1);
+				sMCMCMC = sMCMCMC.substring(sMCMCMC.indexOf('.') + 1);
 			} else {
 				sMCMCMC = "";
 			}
 		}
 		long nSeed = Randomizer.getSeed();
-		
-		
+			
 
-		
 		
 		// create new chains		
 		for (int i = 0; i < chains.length; i++) {
@@ -118,27 +112,24 @@ public class CoupledMCMC extends MCMC {
 				}
 				String chainFileName = stateFileNameInput.get()  + "." + i + ".state";
 				
+				
 				chains[i].setChainNr(i, resampleEvery, temperatureScalerInput.get());
-				chains[i].setStateFile(chainFileName, restoreFromFile);
-			
+				chains[i].setStateFile(stateFileName + "." + i, restoreFromFile);
+
+				
+				
 				chains[i].run();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
 		}
-	
-		// reopen log files for main chain, which were closed at the end of run(); 
-		//Logger.FILE_MODE = LogFileMode.resume;
-		//for (Logger logger : m_chains[0].loggersInput.get()) {
-		//	logger.init();
-		//}
 		
 		// get a copy of the list of state nodes to facilitate swapping states
 		tmpStateNodes = startStateInput.get().stateNodeInput.get();
 
 		chainLength = chainLengthInput.get();
 		finishTimes = new long[chains.length];
-	} // initAndValidate
+	}
 	
 	
 	
@@ -158,6 +149,8 @@ public class CoupledMCMC extends MCMC {
 	
 	@Override 
 	public void run() throws IOException {
+		
+		initRun();
 		
 		int totalSwaps = 0;
 		int successfullSwaps = 0, successfullSwaps0 = 0;

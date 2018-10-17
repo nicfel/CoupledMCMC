@@ -48,12 +48,23 @@ public class HeatedChain extends MCMC {
 	public double getTemperature(){
 		return temperature;
 	}
+	
+//	public void setChainNr(int i, int resampleEvery) {
+//		temperature = 1 + i * LAMBDA;
+//		this.resampleEvery = resampleEvery;
+//	}
 
-	// sets all nodes dirty and recalculates everything
+
 	protected double calcCurrentLogLikelihoodRobustly() {
 		oldLogLikelihood = robustlyCalcPosterior(posterior);
 		return getCurrentLogLikelihood();
 	};
+
+	
+//	@Override
+//	protected void doLoop() throws Exception {
+//	//	runTillResample();
+//	}
 	
     @Override
     public void run() throws IOException, SAXException, ParserConfigurationException {
