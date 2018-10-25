@@ -22,26 +22,30 @@ import java.util.List;
 				"  Bioinformatics, 20(3), 407-415."
 		, year = 2004, firstAuthorSurname = "Altekar",
 		DOI="10.1093/bioinformatics/btg427")
-@Description("Metropolis-Coupled Markov Chain Monte Carlo" +
-		"" +
-		"Note that log file names should have $(seed) in their name so " +
-		"that the first chain uses the actual seed in the file name and all subsequent chains add one to it." +
-		"Furthermore, the log and tree log should have the same sample frequency.")
+@Description("")
 public class CoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
-	public Input<Double> temperatureScalerInput = new Input<>("temperatureScaler","temperature scaler, the higher this value, the hotter the chains", 0.01);
+	
+	// input of the difference between temperature scalers
+	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature scaler, the higher this value, the hotter the chains", 0.1);
+	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
-	public Input<Integer> adaptTemperatureEveryInput = new Input<>("adaptTemperatureEvery","if specified, teh temperature is optimzed after n swaps", -1);
-	public Input<Boolean> swapNeighboursOnlyInput = new Input<>("swapNeighboursOnly","if true, only neighbouring chains are swapped", false);
-
+	
+	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, teh temperature is optimzed after n swaps", true);
+	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimzed after n swaps", 1);
+	public Input<Integer> acceptedWindowInput = new Input<>("acceptedWindow","window for which to calculate the acceptance ratio", 500);
+	public Input<Integer> stopUpdatingTemperatureInput = new Input<>("stopUpdatingTemperature","window for which to calculate the acceptance ratio", 2000);
 	
 	
 	// nr of samples between re-arranging states
 	int resampleEvery;	
-	double temperatureScaler;
-	int adaptTemperatureEvery;
+	double deltaTemperature;
+	
+	// keeps track of 
+	boolean[] wasAccepted;
+	int wacount;
 	
 	
 	/** plugins representing MCMC with model, loggers, etc **/
@@ -67,21 +71,35 @@ public class CoupledMCMC extends MCMC {
 		// initialize the differently heated chains
 		chains = new HeatedChain[nrOfChainsInput.get()];
 		
-		resampleEvery = resampleEveryInput.get();		
-		temperatureScaler = temperatureScalerInput.get();
-		adaptTemperatureEvery = adaptTemperatureEveryInput.get();
+		resampleEvery = resampleEveryInput.get();				
+		
+		if (maxTemperatureInput.get()!=null){
+			System.err.println("calculating delta T from max Temperature and number of chains");
+			deltaTemperature = maxTemperatureInput.get()/(nrOfChainsInput.get()-1);
+		}else{
+			deltaTemperature = deltaTemperatureInput.get();
+		}
+		
+		wasAccepted = new boolean[acceptedWindowInput.get()];
+		wacount = 0;
+				
+
 		
 	} // initAndValidate
 	
 	private void initRun(){
 		String sXML = new XMLProducer().toXML(this);
+		// removes coupled MCMC parts of the xml
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("temperatureScaler=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("deltaTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("maxTemperature=['\"][^ ]*['\"]", "");
+		
 		sXML = sXML.replaceAll("logHeatedChains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("adaptTemperatureEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("swapNeighboursOnly=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
 
 	
         String sMCMCMC = this.getClass().getName();
@@ -93,7 +111,7 @@ public class CoupledMCMC extends MCMC {
 				sMCMCMC = "";
 			}
 		}
-		long nSeed = Randomizer.getSeed();
+//		long nSeed = Randomizer.getSeed();
 			
 
 		
@@ -116,17 +134,18 @@ public class CoupledMCMC extends MCMC {
 				if (!logHeatedChainsInput.get() && i != 0){
 					chains[i].loggersInput.get().clear();					
 				}// remove only the screen logger
-				else if (i != 0 && !logHeatedChainsInput.get()) {
+				else if (i != 0 && logHeatedChainsInput.get()) {
 					for (int j = 0; j < chains[i].loggersInput.get().size(); j++){
-						if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog"))
+						if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog")){
 							chains[i].loggersInput.get().remove(j);
+						}
 					}
-				}			
+				}	
 				
 				// initialize each chain individually
-				chains[i].setChainNr(i, resampleEvery, temperatureScaler);
+				chains[i].setChainNr(i, resampleEvery, deltaTemperature);
 				chains[i].setStateFile(stateFileName.replace(".state", "." + i + "state"), restoreFromFile);				
-				
+//				chains[i].setSeed(nSeed+i);
 				chains[i].run();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -144,9 +163,11 @@ public class CoupledMCMC extends MCMC {
 	
 	class HeatedChainThread extends Thread {
 		final int chainNr;
+
 		HeatedChainThread(int chainNr) {
 			this.chainNr = chainNr;
 		}
+		
 		public void run() {
 			try {
 				finishTimes[chainNr] = chains[chainNr].runTillResample();
@@ -171,6 +192,12 @@ public class CoupledMCMC extends MCMC {
 			threads = new Thread[chains.length];
 			
 			for (int k = 0; k < chains.length; k++) {
+//				try {
+//					chains[k].runTillResample();
+//				} catch (Exception e) {
+//					// TODO Auto-generated catch block
+//					e.printStackTrace();
+//				}
 				threads[k] = new HeatedChainThread(k);
 				threads[k].start();
 			}
@@ -186,61 +213,72 @@ public class CoupledMCMC extends MCMC {
 			}
 			
 			if (chains.length > 1) {
-				int i,j;
-				// resample state
-				if (swapNeighboursOnlyInput.get()){
-					i = Randomizer.nextInt(chains.length-1);
-					j = i+1;					
-				}else{
+				for (int ne = 0; ne < nrExchangesInput.get(); ne++){ 
+					
+					int i,j;
+					// resample state
 					i = Randomizer.nextInt(chains.length);
+					
 					j = i;
 					while (i == j) {
 						j = Randomizer.nextInt(chains.length);
 					}
+					
 					if (i > j) {
 						int tmp = i; i = j; j = tmp;
 					}
-				}
-				
-				
-				double p1before = chains[i].getCurrentLogLikelihood();
-				double p2before = chains[j].getCurrentLogLikelihood();
-
-				// robust calculations can be extremly expensive, just calculate the new probs instead 
-				double p1after = chains[i].getCurrentLogLikelihood() * chains[i].getTemperature() / chains[j].getTemperature();
-				double p2after = chains[j].getCurrentLogLikelihood() * chains[j].getTemperature() / chains[i].getTemperature();
-				
-								
-				double logAlpha = p1after - p1before + p2after - p2before;
-				System.err.println(successfullSwaps0 + " " + successfullSwaps + ": " + i + " <--> " + j + ": " + logAlpha +  ": " + ((double) successfullSwaps/totalSwaps) + ": " + temperatureScaler);
-				if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
-					if (totalSwaps>99)
-						successfullSwaps++;
+										
 					
-					if (i == 0) {
-						successfullSwaps0++;
-					}
-					System.err.println(i + " <--> " + j);
-					swapStates(chains[i], chains[j]);
-					chains[i].calcCurrentLogLikelihoodRobustly();
-					chains[j].calcCurrentLogLikelihoodRobustly();
-
-					//assignState(chains[j], chains[i]);
-					//chains[j].calcCurrentLogLikelihoodRobustly();
-				}
-				totalSwaps++;
-				
-				if (adaptTemperatureEvery!=-1 && 
-						totalSwaps % adaptTemperatureEvery==0 &&
-						totalSwaps > 110){
-					// adapt the temperature scaler
-					updateTemperature(totalSwaps, (double) successfullSwaps/(totalSwaps-100));
-					for (int k = 1; k < chains.length; k++) {
-						chains[k].setTemperature(k, temperatureScaler);
-					}
-					 
 					
+					double p1before = chains[i].getCurrentLogLikelihood();
+					double p2before = chains[j].getCurrentLogLikelihood();
+	
+					// robust calculations can be extremly expensive, just calculate the new probs instead 
+					double p1after = chains[i].getCurrentLogLikelihood() / chains[i].getBeta() * chains[j].getBeta();
+					double p2after = chains[j].getCurrentLogLikelihood() / chains[j].getBeta() * chains[i].getBeta();
+					
+									
+					double logAlpha = (p1after + p2after) - (p1before  + p2before);
+//					System.err.println(successfullSwaps0 + " " + successfullSwaps + ": " + i + " <--> " + j + ": " + logAlpha +  ": " + ((double) successfullSwaps/totalSwaps) + ": " + deltaTemperature);
+					if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
+						wasAccepted[wacount] = true;
+						wacount++;
+						if (wacount==wasAccepted.length)
+							wacount = 0;
+												
+						if (i == 0) {
+							successfullSwaps0++;
+						}
+//						System.err.println(i + " <--> " + j);
+						swapStates(chains[i], chains[j]);
+						chains[i].calcCurrentLogLikelihoodRobustly();
+						chains[j].calcCurrentLogLikelihoodRobustly();
+	
+						//assignState(chains[j], chains[i]);
+						//chains[j].calcCurrentLogLikelihoodRobustly();
+					}else{
+						wasAccepted[wacount] = false;
+						wacount++;
+						if (wacount==wasAccepted.length)
+							wacount = 0;
+						
+					}
+					totalSwaps++;
 				}
+				if (totalSwaps < stopUpdatingTemperatureInput.get()){
+					if (optimiseTemperatureInput.get() && 
+							totalSwaps > wasAccepted.length){
+						// adapt the temperature scaler
+						updateTemperature();
+						for (int k = 1; k < chains.length; k++) {
+							chains[k].setBeta(k, deltaTemperature);
+						}
+						 
+						
+					}
+				}
+				System.err.println("succesfull swap fraction: " + getSuccesfullFraction() + " deltaT: " + deltaTemperature);
+				
 					
 //				// tuning
 //				for (int k = 1; k < chains.length; k++) {
@@ -259,23 +297,28 @@ public class CoupledMCMC extends MCMC {
 		}
 	} // run
 	
-    public double updateTemperature(int totalSwaps, double successfulFraction) {
-    	
-//        // do no optimisation for the first N optimisable operations
-//        if (autoOptimizeDelayCount < autoOptimizeDelay || !autoOptimise) {
-//            autoOptimizeDelayCount++;
-//            return 0;
-//        }
+	public double getSuccesfullFraction(){
+		int successfullCount = 0;
+    	for (int i = 0; i < wasAccepted.length; i++)
+    		if (wasAccepted[i])
+    			successfullCount++;
+    	return (double) successfullCount /(double) wasAccepted.length;
+		
+	}
+	
+    public double updateTemperature() {
+    	int totalSwaps = wasAccepted.length; 
+    	double successfullFraction = getSuccesfullFraction();
         
-        final double target = 0.1;
+        final double target = 0.25;
 
 //        double count = (totalSwaps + 1.0);
 //        switch (transform) {
 //            case log:
-//                double count = Math.log(totalSwaps + 1.0);
+                double count = Math.log(totalSwaps + 1.0);
 //                break;
 //            case sqrt:
-                double count = Math.sqrt(totalSwaps);
+//                double count = Math.sqrt(totalSwaps);
 //                break;
 //            case none:
 //            	break;
@@ -283,9 +326,9 @@ public class CoupledMCMC extends MCMC {
 //            	break;
 //        }
 
-        double deltaP = successfulFraction - target;
+        double deltaP = successfullFraction - target;
   
-        temperatureScaler *= Math.exp(1/count * deltaP);
+        deltaTemperature *= Math.exp(1/count * deltaP);
 //        deltaP += Math.log(1.0 / temperatureScaler - 1.0);        
         
 //        System.out.println(totalSwaps + " " + logAlpha + " " + target+ " " + deltaP);
@@ -298,18 +341,18 @@ public class CoupledMCMC extends MCMC {
         return 0;
     }
 
-	
-	private void assignState(HeatedChain mcmc1, HeatedChain mcmc2) {
-		State state1 = mcmc1.startStateInput.get();
-		State state2 = mcmc2.startStateInput.get();
-		List<StateNode> stateNodes1 = state1.stateNodeInput.get();
-		List<StateNode> stateNodes2 = state2.stateNodeInput.get();
-		for (int i = 0; i < stateNodes1.size(); i++) {
-			StateNode stateNode1 = stateNodes1.get(i);
-			StateNode stateNode2 = stateNodes2.get(i);
-			stateNode1.assignFromWithoutID(stateNode2);
-		}
-	}
+//	
+//	private void assignState(HeatedChain mcmc1, HeatedChain mcmc2) {
+//		State state1 = mcmc1.startStateInput.get();
+//		State state2 = mcmc2.startStateInput.get();
+//		List<StateNode> stateNodes1 = state1.stateNodeInput.get();
+//		List<StateNode> stateNodes2 = state2.stateNodeInput.get();
+//		for (int i = 0; i < stateNodes1.size(); i++) {
+//			StateNode stateNode1 = stateNodes1.get(i);
+//			StateNode stateNode2 = stateNodes2.get(i);
+//			stateNode1.assignFromWithoutID(stateNode2);
+//		}
+//	}
 
 	/* swaps the states of mcmc1 and mcmc2 */
 	void swapStates(MCMC mcmc1, MCMC mcmc2) {
