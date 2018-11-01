@@ -3,3 +3,6 @@
 .project
 /bin/
 /examples/*.*
+/build/
+/build-lib/
+/dist/

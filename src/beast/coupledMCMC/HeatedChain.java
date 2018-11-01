@@ -45,17 +45,19 @@ public class HeatedChain extends MCMC {
 	
 	public void setChainNr(int i, int resampleEvery, double temperature) {
 		chainNr = i;
-		this.beta = 1/(1 + chainNr  * temperature);
+		this.beta = 1/(1 + temperature);
 		this.resampleEvery = resampleEvery;
+
 	}
 	
 	public double getBeta(){
 		return beta;
 	}	
 	
-	public void setBeta(int i, double deltaTemperature){
+	public void setBeta(int i, double temperature){
 		chainNr = i;
-		this.beta = 1/(1 + chainNr  * deltaTemperature);
+		this.beta = 1/(1 + temperature);
+		
 	}	
 
 
