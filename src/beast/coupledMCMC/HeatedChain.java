@@ -8,6 +8,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
+import beast.core.Citation;
 import beast.core.Description;
 import beast.core.Distribution;
 import beast.core.Logger;
@@ -19,6 +20,11 @@ import beast.core.util.Log;
 //import beast.util.Randomizer;
 import beast.util.Randomizer;
 
+@Citation(value= "Altekar G, Dwarkadas S, Huelsenbeck J and Ronquist F (2004). \n" +
+		"  Parallel Metropolis Coupled Markov Chain Monte Carlo For Bayesian Phylogenetic Inference.\n" +
+		"  Bioinformatics, 20(3), 407-415."
+, year = 2004, firstAuthorSurname = "Altekar",
+DOI="10.1093/bioinformatics/btg427")
 @Description("Base class for doing Metropolis coupled MCMC. Each instance represenst a chain at a different temperature.")
 public class HeatedChain extends MCMC {
 	
@@ -35,7 +41,7 @@ public class HeatedChain extends MCMC {
 	// keep track of total nr of states sampled, using currentSample
 	protected int currentSample = 0;
 	
-	protected int chainNr = 0;
+//	protected int chainNr = 0;
 
 	protected double getCurrentLogLikelihood() {
 		return oldLogLikelihood * beta;
@@ -43,20 +49,22 @@ public class HeatedChain extends MCMC {
 
 	// set chain number for a given lambda
 	
-	public void setChainNr(int i, int resampleEvery, double temperature) {
-		chainNr = i;
-		this.beta = 1/(1 + temperature);
+	public void setResampleEvery(int resampleEvery) {
 		this.resampleEvery = resampleEvery;
 
 	}
+	
+	public void setTemperature(int i, double temperature) {
+		this.beta = 1/(1 + temperature);
+	}
+
 	
 	public double getBeta(){
 		return beta;
 	}	
 	
-	public void setBeta(int i, double temperature){
-		chainNr = i;
-		this.beta = 1/(1 + temperature);
+	public void setBeta(double beta){
+		this.beta = beta;
 		
 	}	
 
@@ -166,7 +174,7 @@ public class HeatedChain extends MCMC {
                 final double logLikelihood = isStochastic ? state.robustlyCalcNonStochasticPosterior(posterior) : state.robustlyCalcPosterior(posterior);
                 if (isTooDifferent(logLikelihood, originalLogP)) {
                     reportLogLikelihoods(posterior, "");
-                    Log.err.println("At sample " + sampleNr + "\nPosterior in chain " + chainNr +  " incorrectly calculated: " + originalLogP + " != " + logLikelihood
+                    Log.err.println("At sample " + sampleNr + "\nPosterior incorrectly calculated: " + originalLogP + " != " + logLikelihood
                     		+ "(" + (originalLogP - logLikelihood) + ")"
                             + " Operator: " + operator.getClass().getName());
 //                    System.exit(0);
