@@ -14,6 +14,7 @@ import beast.core.Distribution;
 import beast.core.Logger;
 import beast.core.MCMC;
 import beast.core.Operator;
+import beast.core.OperatorSchedule;
 import beast.core.StateNodeInitialiser;
 import beast.core.util.Evaluator;
 import beast.core.util.Log;
@@ -41,7 +42,14 @@ public class HeatedChain extends MCMC {
 	// keep track of total nr of states sampled, using currentSample
 	protected int currentSample = 0;
 	
-//	protected int chainNr = 0;
+    /**
+     * Alternative representation of operatorsInput that allows random selection
+     * of operators and calculation of statistics.
+     */
+//    protected OperatorSchedule operatorSchedule;
+
+	
+	private int chainNr = 0;
 
 	protected double getCurrentLogLikelihood() {
 		return oldLogLikelihood * beta;
@@ -49,24 +57,41 @@ public class HeatedChain extends MCMC {
 
 	// set chain number for a given lambda
 	
-	public void setResampleEvery(int resampleEvery) {
+	protected void setResampleEvery(int resampleEvery) {
 		this.resampleEvery = resampleEvery;
 
 	}
 	
-	public void setTemperature(int i, double temperature) {
+	protected void setTemperature(int i, double temperature) {
 		this.beta = 1/(1 + temperature);
 	}
 
 	
-	public double getBeta(){
+	protected double getBeta(){
 		return beta;
 	}	
 	
-	public void setBeta(double beta){
-		this.beta = beta;
-		
+	protected void setBeta(double beta){
+		this.beta = beta;		
 	}	
+	
+	protected int getChainNr(){
+		return chainNr;
+	}	
+	
+	protected void setChainNr(int chainNr){
+		this.chainNr = chainNr;		
+	}	
+
+	protected String getStateFileName(){
+		return stateFileName;
+	}
+	
+	protected void setStateFileName(String stateFileName){
+		this.stateFileName = stateFileName;
+	}
+
+	
 
 
 	protected double calcCurrentLogLikelihoodRobustly() {
@@ -155,7 +180,10 @@ public class HeatedChain extends MCMC {
 //        Randomizer = new Randomizer();
                 
     } // run;
-	
+    
+    public OperatorSchedule getOperatorSchedule(){
+    	return operatorSchedule;
+    }	
 	
 	// run MCMC inner loop for resampleEvery nr of samples
 	protected long runTillResample() throws Exception {

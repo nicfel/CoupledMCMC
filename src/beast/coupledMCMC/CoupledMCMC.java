@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.List;
 
 @Citation(value= "Altekar G, Dwarkadas S, Huelsenbeck J and Ronquist F (2004). \n" +
@@ -138,7 +139,7 @@ public class CoupledMCMC extends MCMC {
 				chains[i].setResampleEvery(resampleEvery);
 				chains[i].setTemperature(i, getTemperature(i));
 				chains[i].setStateFile(stateFileName.replace(".state", "." + i + "state"), restoreFromFile);				
-//				chains[i].setSeed(nSeed+i);
+				chains[i].setChainNr(i);
 				chains[i].run();
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -222,7 +223,12 @@ public class CoupledMCMC extends MCMC {
 						j = Randomizer.nextInt(chains.length);
 					}
 					
-					if (i > j) {
+					// get the temperatures of each chain
+					double betai = chains[i].getBeta();
+					double betaj = chains[j].getBeta();					
+
+					
+					if (betai < betaj) {
 						int tmp = i; i = j; j = tmp;
 					}
 										
@@ -232,37 +238,33 @@ public class CoupledMCMC extends MCMC {
 					double p2before = chains[j].getCurrentLogLikelihood();
 	
 					// robust calculations can be extremly expensive, just calculate the new probs instead 
-					double p1after = chains[i].getCurrentLogLikelihood() / chains[i].getBeta() * chains[j].getBeta();
-					double p2after = chains[j].getCurrentLogLikelihood() / chains[j].getBeta() * chains[i].getBeta();
+					double p1after = chains[i].getCurrentLogLikelihood() / betai * betaj;
+					double p2after = chains[j].getCurrentLogLikelihood() / betaj * betai;
 					
 					double logAlpha = (p1after + p2after) - (p1before  + p2before);
 
 					if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
+//						System.err.println("swap " + chains[i].getBeta() + " and " + chains[j].getBeta());
 
 						successfullSwaps++;
 						if (i == 0) {
 							successfullSwaps0++;
 						}
-//						System.err.println(chains[i].getCurrentLogLikelihood() / chains[i].getBeta() + " " + chains[j].getCurrentLogLikelihood() / chains[j].getBeta());
 
 						// swap temperatures    
-						double betai = chains[i].getBeta();
-						double betaj = chains[j].getBeta();
 						chains[j].setBeta(betai);
-						chains[i].setBeta(betaj);
-						// swap loggers
+						chains[i].setBeta(betaj);	
+						
+//						System.err.println("swap " + chains[i].getBeta() + " and " + chains[j].getBeta());
+
+						// swap loggers and the state file names
 						swapLoggers(chains[i], chains[j]);
 						
+						// swap Operator tuning
+						swapOperatorTuning(chains[i], chains[j]);
 						
-						chains[i].calcCurrentLogLikelihoodRobustly();
-						chains[j].calcCurrentLogLikelihoodRobustly();
-						
-
-						
-//						System.err.println(chains[j].getCurrentLogLikelihood() / chains[j].getBeta() + " " + chains[i].getCurrentLogLikelihood() / chains[i].getBeta());
-
-//						System.err.println("swap " +i+ " and " + j);
 //						System.exit(0);
+
 					}
 					totalSwaps++;
 
@@ -331,7 +333,6 @@ public class CoupledMCMC extends MCMC {
 	void swapStates(MCMC mcmc1, MCMC mcmc2) {
 		State state1 = mcmc1.startStateInput.get();
 		State state2 = mcmc2.startStateInput.get();
-
 	
 		List<StateNode> stateNodes1 = state1.stateNodeInput.get();
 		List<StateNode> stateNodes2 = state2.stateNodeInput.get();
@@ -346,10 +347,9 @@ public class CoupledMCMC extends MCMC {
 	}
 	
 	/* swaps the states of mcmc1 and mcmc2 */
-	void swapLoggers(MCMC mcmc1, MCMC mcmc2) {
+	void swapLoggers(HeatedChain mcmc1, HeatedChain mcmc2) {
 		int mcmc2size = mcmc2.loggersInput.get().size();
-		int mcmc1size = mcmc2.loggersInput.get().size();
-		
+		int mcmc1size = mcmc1.loggersInput.get().size();
 		
 		for (int i = 0; i < mcmc2size; i++){
 			for (int j = 0; j < mcmc1size; j++){
@@ -365,12 +365,51 @@ public class CoupledMCMC extends MCMC {
 					
 					mcmc2.loggersInput.get().get(i).setIsLogging(isLogging1);
 					mcmc1.loggersInput.get().get(j).setIsLogging(isLogging2);
-				}
-					
-			}
+				}					
+			}			
+		}		
+		
+		// swap the state file Names as well
+		String stateFileName = mcmc1.getStateFileName();
+		mcmc1.setStateFileName(mcmc2.getStateFileName());
+		mcmc2.setStateFileName(stateFileName);
+	}
+
+	void swapOperatorTuning(HeatedChain mcmc1, HeatedChain mcmc2) {
+		List<Operator> operatorList1 = new ArrayList<Operator>();
+		List<Operator> operatorList2 = new ArrayList<Operator>();		
+		
+		operatorList1 = mcmc1.getOperatorSchedule().operatorsInput.get();
+		operatorList2 = mcmc2.getOperatorSchedule().operatorsInput.get();
+		
+		
+		for (int i = 0; i < operatorList1.size(); i++){
+			Operator operator1 = operatorList1.get(i);
+			Operator operator2 = operatorList2.get(i);
+
+		    int m_nNrRejected = operator1.get_m_nNrRejected();
+		    int m_nNrAccepted = operator1.get_m_nNrAccepted();
+		    int m_nNrRejectedForCorrection = operator1.get_m_nNrRejectedForCorrection();
+		    int m_nNrAcceptedForCorrection = operator1.get_m_nNrAcceptedForCorrection();
+		    
+		    operator1.setAcceptedRejected(operator2.get_m_nNrRejected(), operator2.get_m_nNrAccepted(), operator2.get_m_nNrRejectedForCorrection(), operator2.get_m_nNrAcceptedForCorrection());
+		    operator2.setAcceptedRejected(m_nNrAccepted, m_nNrRejected, m_nNrAcceptedForCorrection, m_nNrRejectedForCorrection);
+		    
+//		    System.out.println(operator1.getCoercableParameterValue() + " " + operator2.getCoercableParameterValue());
+		    
+		    double coercableParameterValue = operator1.getCoercableParameterValue();
+		    operator1.setCoercableParameterValue(operator2.getCoercableParameterValue());
+		    operator2.setCoercableParameterValue(coercableParameterValue);
+		    
+//		    System.out.println(operator1.getCoercableParameterValue() + " " + operator2.getCoercableParameterValue());
+//		    System.out.println();
+
+
+			
 			
 		}		
 	}
+
 
 	
 	/* makes the schedule of when to swap which chains */
