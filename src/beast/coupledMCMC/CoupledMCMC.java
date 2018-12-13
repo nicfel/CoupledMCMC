@@ -238,8 +238,8 @@ public class CoupledMCMC extends MCMC {
 					double p2before = chains[j].getCurrentLogLikelihood();
 	
 					// robust calculations can be extremly expensive, just calculate the new probs instead 
-					double p1after = chains[i].getCurrentLogLikelihood() / betai * betaj;
-					double p2after = chains[j].getCurrentLogLikelihood() / betaj * betai;
+					double p1after = chains[i].getCurrentLogLikelihood() / chains[i].getBeta() * chains[j].getBeta();
+					double p2after = chains[j].getCurrentLogLikelihood() / chains[j].getBeta() * chains[i].getBeta();
 					
 					double logAlpha = (p1after + p2after) - (p1before  + p2before);
 
@@ -252,8 +252,10 @@ public class CoupledMCMC extends MCMC {
 						}
 
 						// swap temperatures    
-						chains[j].setBeta(betai);
-						chains[i].setBeta(betaj);	
+						double beta = chains[i].getBeta();
+						chains[i].setBeta(chains[j].getBeta());						
+						chains[j].setBeta(beta);
+							
 						
 //						System.err.println("swap " + chains[i].getBeta() + " and " + chains[j].getBeta());
 
