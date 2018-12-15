@@ -40,7 +40,7 @@ public class HeatedChain extends MCMC {
 	protected int resampleEvery = 1000;
 	
 	// keep track of total nr of states sampled, using currentSample
-	protected int currentSample = 0;
+	protected long currentSample = 0;
 	
     /**
      * Alternative representation of operatorsInput that allows random selection
@@ -54,6 +54,11 @@ public class HeatedChain extends MCMC {
 	protected double getCurrentLogLikelihood() {
 		return oldLogLikelihood * beta;
 	};
+	
+	protected double getUnscaledCurrentLogLikelihood() {
+		return oldLogLikelihood;
+	};
+
 
 	// set chain number for a given lambda
 	
@@ -183,15 +188,15 @@ public class HeatedChain extends MCMC {
     
     public OperatorSchedule getOperatorSchedule(){
     	return operatorSchedule;
-    }	
+    }    
 	
 	// run MCMC inner loop for resampleEvery nr of samples
-	protected long runTillResample() throws Exception {
+	protected long runTillResample(long runUntil) throws Exception {
 		int corrections = 0;
 		final boolean isStochastic = posterior.isStochastic();
 
-		for (int sampleNr = currentSample; sampleNr < currentSample + resampleEvery; sampleNr++) {
-            final int currentState = sampleNr;
+		for (long sampleNr = currentSample; sampleNr < runUntil; sampleNr++) {
+            final long currentState = sampleNr;
             final Operator operator = propagateState(sampleNr);
 //            System.out.println(chainNr + " " + sampleNr);
             
@@ -254,7 +259,8 @@ public class HeatedChain extends MCMC {
         	Log.err.println("\n\nNB: " + corrections + " posterior calculation corrections were required. This analysis may not be valid!\n\n");
         }
 
-        currentSample += resampleEvery;
+        currentSample = runUntil;
+        
         return System.currentTimeMillis();
 	}
 	
@@ -314,7 +320,7 @@ public class HeatedChain extends MCMC {
             newLogLikelihood = posterior.calculateLogP();
 
             logAlpha = newLogLikelihood*beta - oldLogLikelihood*beta + logHastingsRatio; 
-
+            
 //            logAlpha = newLogLikelihood - oldLogLikelihood + logHastingsRatio; //CHECK HASTINGS
 //            if (printDebugInfo) System.err.print(logAlpha + " " + newLogLikelihood + " " + oldLogLikelihood);
 
@@ -360,6 +366,8 @@ public class HeatedChain extends MCMC {
 	}
 
 	public void optimiseRunTime(long startTime, long endTime, long endTimeMainChain) {}
+	
+	
 
 //	public void setSeed(long seed) {
 //		Randomizer.setSeed(seed);
