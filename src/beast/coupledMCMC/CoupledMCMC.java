@@ -35,7 +35,7 @@ public class CoupledMCMC extends MCMC {
 	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many iterations, the temperature will be optimized (if optimising is set to true)", 100000);
 	public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
 
-	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", false);
+	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
 	
 	// nr of samples between re-arranging states
 	int resampleEvery;	
@@ -79,6 +79,7 @@ public class CoupledMCMC extends MCMC {
 	
 	private void initRun(){
 		String sXML = new XMLProducer().toXML(this);
+		
 		// removes coupled MCMC parts of the xml
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
@@ -121,25 +122,18 @@ public class CoupledMCMC extends MCMC {
 				
 				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
 	
-				// remove all loggers
+				// remove all screen loggers
+				for (int j = chains[i].loggersInput.get().size()-1; j >=0 ; j--){
+					if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog")){
+						chains[i].loggersInput.get().remove(j);
+					}
+				}
+				
+				// remove all loggers of heated chains if they are not logged
 				if (!logHeatedChainsInput.get() && i != 0){
 					chains[i].loggersInput.get().clear();					
-				}// remove only the screen logger
-				else if (i != 0 && logHeatedChainsInput.get()) {
-					for (int j = 0; j < chains[i].loggersInput.get().size(); j++){
-						if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog")){
-							chains[i].loggersInput.get().get(j).setIsLogging(false);;
-						}
-					}
-				}	
-//				else if (logHeatedChainsInput.get()) {
-//					for (int j = 0; j < chains[i].loggersInput.get().size(); j++){
-//						if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog")){
-//							chains[i].loggersInput.get().get(j).setIsLogging(false);;
-//						}
-//					}
-//				}	
-
+				}
+				// remove only the screen logger
 				
 				// initialize each chain individually
 				chains[i].setResampleEvery(resampleEvery);
@@ -151,8 +145,6 @@ public class CoupledMCMC extends MCMC {
 				throw new RuntimeException(e);
 			}
 		}		
-		// get a copy of the list of state nodes to facilitate swapping states
-//		tmpStateNodes = startStateInput.get().stateNodeInput.get();
 
 		chainLength = chainLengthInput.get();
 		finishTimes = new long[chains.length];
@@ -163,6 +155,15 @@ public class CoupledMCMC extends MCMC {
 		if (preScheduleInput.get()){
 			buildSchedule();
 		}
+		
+		if (restoreFromFile){
+			System.out.println("restoring from file, printing to screen but not to loggers will start again from 0");
+			System.out.println("we further assume that all chains ended in the same state, if logging heated chains" +
+			" the different heated chains can have different amount of interations");
+		}
+		
+		
+		System.out.println("sample\tswapsColdCain\tswapProbability");
 
 		
 	}
@@ -199,101 +200,95 @@ public class CoupledMCMC extends MCMC {
 			return;
 		}
 		
-		int totalSwaps = 0;
-		int successfullSwaps = 0, successfullSwaps0 = 0;
-		int optimizationSteps = 0;
-
-		for (int sampleNr = 0; sampleNr < chainLength; sampleNr += resampleEvery) {
-			long startTime = System.currentTimeMillis();
-			
-			// start threads with individual chains here.
-			threads = new Thread[chains.length];
-			
-			for (int k = 0; k < chains.length; k++) {
+//		int totalSwaps = 0;
+//		int successfullSwaps = 0, successfullSwaps0 = 0;
+//		int optimizationSteps = 0;
+//
+//		for (int sampleNr = 0; sampleNr < chainLength; sampleNr += resampleEvery) {
+//			long startTime = System.currentTimeMillis();
+//			
+//			// start threads with individual chains here.
+//			threads = new Thread[chains.length];
+//			
+//			for (int k = 0; k < chains.length; k++) {
+//				threads[k] = new HeatedChainThread(k, resampleEvery);
+//				threads[k].start();
+//			}
+//
+//
+//			// wait for the chains to finish
+//	        startLogTime = System.currentTimeMillis();
+//			for (Thread thread : threads) {
 //				try {
-//					chains[k].runTillResample();
-//				} catch (Exception e) {
-//					// TODO Auto-generated catch block
+//					thread.join();
+//				} catch (InterruptedException e) {
 //					e.printStackTrace();
 //				}
-				threads[k] = new HeatedChainThread(k, resampleEvery);
-				threads[k].start();
-			}
-
-
-			// wait for the chains to finish
-	        startLogTime = System.currentTimeMillis();
-			for (Thread thread : threads) {
-				try {
-					thread.join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-			}
-			
-			if (chains.length > 1) {
-				for (int ne = 0; ne < nrExchangesInput.get(); ne++){ 
-					
-					int i,j;
-					// resample state
-					i = Randomizer.nextInt(chains.length);
-					
-					j = i;
-					while (i == j) {
-						j = Randomizer.nextInt(chains.length);
-					}
-					
-					
-					if (chains[i].getBeta() <  chains[j].getBeta()) {
-						int tmp = i; i = j; j = tmp;
-					}
-				
-					
-					double p1before = chains[i].getCurrentLogLikelihood();
-					double p2before = chains[j].getCurrentLogLikelihood();
-	
-					// robust calculations can be extremly expensive, just calculate the new probs instead 
-					double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-					double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
-					
-					double logAlpha = (p1after + p2after) - (p1before  + p2before);
-					if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
-//						System.err.println("swap " + chains[i].getBeta() + " and " + chains[j].getBeta());
-
-						successfullSwaps++;
-						if (i == 0) {
-							successfullSwaps0++;
-						}
-
-						// swap temperatures    
-						double beta = chains[i].getBeta();
-						chains[i].setBeta(chains[j].getBeta());						
-						chains[j].setBeta(beta);
-
-						// swap loggers and the state file names
-						swapLoggers(chains[i], chains[j]);
-						
-						// swap Operator tuning
-						swapOperatorTuning(chains[i], chains[j]);
-					}
-					totalSwaps++;
-
-				}
-				
-				optimizationSteps++;
-
-				System.err.println("succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
-			}
-		}
-
-		System.err.println("#Successfull swaps = " + successfullSwaps);
-		System.err.println("#Successfull swaps with cold chain = " + successfullSwaps0);
-		// wait 5 seconds for the log to complete
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// ignore
-		}
+//			}
+//			
+//			if (chains.length > 1) {
+//				for (int ne = 0; ne < nrExchangesInput.get(); ne++){ 
+//					
+//					int i,j;
+//					// resample state
+//					i = Randomizer.nextInt(chains.length);
+//					
+//					j = i;
+//					while (i == j) {
+//						j = Randomizer.nextInt(chains.length);
+//					}
+//					
+//					
+//					if (chains[i].getBeta() <  chains[j].getBeta()) {
+//						int tmp = i; i = j; j = tmp;
+//					}
+//				
+//					
+//					double p1before = chains[i].getCurrentLogLikelihood();
+//					double p2before = chains[j].getCurrentLogLikelihood();
+//	
+//					// robust calculations can be extremly expensive, just calculate the new probs instead 
+//					double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
+//					double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+//					
+//					double logAlpha = (p1after + p2after) - (p1before  + p2before);
+//					if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
+////						System.err.println("swap " + chains[i].getBeta() + " and " + chains[j].getBeta());
+//
+//						successfullSwaps++;
+//						if (i == 0) {
+//							successfullSwaps0++;
+//						}
+//
+//						// swap temperatures    
+//						double beta = chains[i].getBeta();
+//						chains[i].setBeta(chains[j].getBeta());						
+//						chains[j].setBeta(beta);
+//
+//						// swap loggers and the state file names
+//						swapLoggers(chains[i], chains[j]);
+//						
+//						// swap Operator tuning
+//						swapOperatorTuning(chains[i], chains[j]);
+//					}
+//					totalSwaps++;
+//
+//				}
+//				
+//				optimizationSteps++;
+//				System.out.println(sampleNr + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + startTime);
+//				System.err.println("succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
+//			}
+//		}
+//
+//		System.out.println("#Successfull swaps = " + successfullSwaps);
+//		System.out.println("#Successfull swaps with cold chain = " + successfullSwaps0);
+//		// wait 5 seconds for the log to complete
+//		try {
+//			Thread.sleep(5000);
+//		} catch (InterruptedException e) {
+//			// ignore
+//		}
 	} // run
 	
 	private void runPrescheduled(){
@@ -301,7 +296,7 @@ public class CoupledMCMC extends MCMC {
 		int totalSwaps = 0;
 		int successfullSwaps = 0, successfullSwaps0 = 0;
 		
-		long startTime = System.currentTimeMillis();
+		
 
 		
 		// run each thread until it's next swapping time
@@ -317,9 +312,13 @@ public class CoupledMCMC extends MCMC {
 			threads[k] = new HeatedChainThread(k, runk);
 			threads[k].start();
 		}
-
+		
+		startLogTime = -1;
+		long startSample = 0;
 		
 		for (long sampleNr = resampleEvery; sampleNr < chainLength; sampleNr += resampleEvery) {
+			
+				
 			
 			// get the chains to swap
 			int i=-1, j=-1;
@@ -346,10 +345,7 @@ public class CoupledMCMC extends MCMC {
 				e.printStackTrace();
 			}
 			
-			
-			System.out.println("joining");
 
-			startLogTime = System.currentTimeMillis();
 					
 					
 			if (chains[i].getBeta() <  chains[j].getBeta()) {
@@ -398,8 +394,28 @@ public class CoupledMCMC extends MCMC {
 			
 			threads[j] = new HeatedChainThread(j, runj);
 			threads[j].start();
+			
+			System.out.print("\t" + sampleNr + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + " ");
+			if (startLogTime>0){			
+	            final long logTime = System.currentTimeMillis();
+	            final int secondsPerMSamples = (int) ((logTime - startLogTime) * 1000.0 / (sampleNr - startSample + 1.0));
+	            final String timePerMSamples =
+	                    (secondsPerMSamples >= 3600 ? secondsPerMSamples / 3600 + "h" : "") +
+	                            (secondsPerMSamples >= 60 ? (secondsPerMSamples % 3600) / 60 + "m" : "") +
+	                            (secondsPerMSamples % 60 + "s");
 
-			System.err.println(sampleNr + " " + i + " " + j + " succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
+            
+	            System.out.print(timePerMSamples + "/Msamples\n");
+			}else{
+	            System.out.print("--\n");
+			}
+			if (sampleNr>=10000 && startLogTime<0){
+				startSample = sampleNr;
+				startLogTime = System.currentTimeMillis();
+			}
+
+				
+//			System.err.println(sampleNr + " " + i + " " + j + " succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
 			
 		}
 
@@ -457,17 +473,11 @@ public class CoupledMCMC extends MCMC {
 		for (int i = 0; i < mcmc2size; i++){
 			for (int j = 0; j < mcmc1size; j++){
 				if (mcmc2.loggersInput.get().get(i).getID().contentEquals(mcmc1.loggersInput.get().get(j).getID())){
-					PrintStream printstream2 = new PrintStream(mcmc2.loggersInput.get().get(i).getPrintStream());
-					PrintStream printstream1 = new PrintStream(mcmc1.loggersInput.get().get(j).getPrintStream());
+					PrintStream printstream2 = new PrintStream(mcmc2.loggersInput.get().get(i).getM_out());
+					PrintStream printstream1 = new PrintStream(mcmc1.loggersInput.get().get(j).getM_out());
 					
 					mcmc2.loggersInput.get().get(i).setPrintStream(printstream1);
-					mcmc1.loggersInput.get().get(j).setPrintStream(printstream2);
-					
-					boolean isLogging2 = mcmc2.loggersInput.get().get(i).getIsLogging();
-					boolean isLogging1 = mcmc1.loggersInput.get().get(j).getIsLogging();
-					
-					mcmc2.loggersInput.get().get(i).setIsLogging(isLogging1);
-					mcmc1.loggersInput.get().get(j).setIsLogging(isLogging2);
+					mcmc1.loggersInput.get().get(j).setPrintStream(printstream2);					
 				}					
 			}			
 		}		

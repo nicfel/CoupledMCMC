@@ -29,11 +29,8 @@ DOI="10.1093/bioinformatics/btg427")
 @Description("Base class for doing Metropolis coupled MCMC. Each instance represenst a chain at a different temperature.")
 public class HeatedChain extends MCMC {
 	
-	// LAMBDA is temperature multiplier
-//	static double LAMBDA = 0.01;
 	
 	// temperature on which this chain runs
-//	protected double temperature = 1.0;
 	protected double beta = 1.0;
 	
 	// nr of samples between re-arranging states
@@ -42,25 +39,16 @@ public class HeatedChain extends MCMC {
 	// keep track of total nr of states sampled, using currentSample
 	protected long currentSample = 0;
 	
-    /**
-     * Alternative representation of operatorsInput that allows random selection
-     * of operators and calculation of statistics.
-     */
-//    protected OperatorSchedule operatorSchedule;
-
-	
 	private int chainNr = 0;
 
 	protected double getCurrentLogLikelihood() {
 		return oldLogLikelihood * beta;
-	};
+	}
 	
 	protected double getUnscaledCurrentLogLikelihood() {
 		return oldLogLikelihood;
-	};
+	}
 
-
-	// set chain number for a given lambda
 	
 	protected void setResampleEvery(int resampleEvery) {
 		this.resampleEvery = resampleEvery;
@@ -71,7 +59,6 @@ public class HeatedChain extends MCMC {
 		this.beta = 1/(1 + temperature);
 	}
 
-	
 	protected double getBeta(){
 		return beta;
 	}	
@@ -243,7 +230,7 @@ public class HeatedChain extends MCMC {
             }
             callUserFunction(sampleNr);
             
-            // make sure we always save just before exiting
+//            // make sure we always save just before exiting
             if (storeEvery > 0 && (sampleNr + 1) % storeEvery == 0 || sampleNr == chainLength) {
                 /*final double logLikelihood = */
                 state.robustlyCalcNonStochasticPosterior(posterior);
@@ -367,7 +354,9 @@ public class HeatedChain extends MCMC {
 
 	public void optimiseRunTime(long startTime, long endTime, long endTimeMainChain) {}
 	
-	
+	protected long getCurrentSample(){
+		return currentSample;
+	}
 
 //	public void setSeed(long seed) {
 //		Randomizer.setSeed(seed);
