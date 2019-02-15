@@ -116,10 +116,6 @@ public class CoupledMCMC extends MCMC {
 			}
 			
 			try {
-//		        FileWriter outfile = new FileWriter(new File(tempDirInput.get() + stateFileName.replace("xml.state", "chain" + i + "_seed" + Randomizer.getSeed() + ".xml") ));
-//		        outfile.write(sXML2);
-//		        outfile.close();
-				
 				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
 	
 				// remove all screen loggers

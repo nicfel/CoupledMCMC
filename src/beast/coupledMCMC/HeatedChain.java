@@ -308,9 +308,6 @@ public class HeatedChain extends MCMC {
 
             logAlpha = newLogLikelihood*beta - oldLogLikelihood*beta + logHastingsRatio; 
             
-//            logAlpha = newLogLikelihood - oldLogLikelihood + logHastingsRatio; //CHECK HASTINGS
-//            if (printDebugInfo) System.err.print(logAlpha + " " + newLogLikelihood + " " + oldLogLikelihood);
-
             if (logAlpha >= 0 || Randomizer.nextDouble() < Math.exp(logAlpha)) {
                 // accept
                 oldLogLikelihood = newLogLikelihood;
@@ -319,7 +316,6 @@ public class HeatedChain extends MCMC {
                 if (sampleNr >= 0) {
                     operator.accept();
                 }
-//                if (printDebugInfo) System.err.print(" accept");
             } else {
                 // reject
                 if (sampleNr >= 0) {
@@ -327,7 +323,6 @@ public class HeatedChain extends MCMC {
                 }
                 state.restore();
                 state.restoreCalculationNodes();
-//                if (printDebugInfo) System.err.print(" reject");
             }
             state.setEverythingDirty(false);
         } else {
@@ -340,7 +335,6 @@ public class HeatedChain extends MCMC {
                 state.setEverythingDirty(false);
                 state.restoreCalculationNodes();
             }
-//            if (printDebugInfo) System.err.print(" direct reject");
         }
         log(sampleNr);
         return operator;
@@ -357,9 +351,5 @@ public class HeatedChain extends MCMC {
 	protected long getCurrentSample(){
 		return currentSample;
 	}
-
-//	public void setSeed(long seed) {
-//		Randomizer.setSeed(seed);
-//	}
 	
 }
