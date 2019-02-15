@@ -5,4 +5,5 @@
 /examples/*.*
 /build/
 /build-lib/
+/build-beast/
 /dist/
