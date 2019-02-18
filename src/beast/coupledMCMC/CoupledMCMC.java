@@ -51,7 +51,7 @@ public class CoupledMCMC extends MCMC {
 
 	// keep track of when threads finish in order to optimise thread usage
 	long [] finishTimes;
-	
+		
 	private ArrayList<Long>[] runTillIteration;
 
 
@@ -92,6 +92,8 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
+		sXML = sXML.replaceAll("</logger", "</coupledLogger");
 
 	
         String sMCMCMC = this.getClass().getName();
@@ -119,15 +121,15 @@ public class CoupledMCMC extends MCMC {
 				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
 	
 				// remove all screen loggers
-				for (int j = chains[i].loggersInput.get().size()-1; j >=0 ; j--){
-					if (chains[i].loggersInput.get().get(j).getID().contentEquals("screenlog")){
-						chains[i].loggersInput.get().remove(j);
+				for (int j = chains[i].coupledLoggersInput.get().size()-1; j >=0 ; j--){
+					if (chains[i].coupledLoggersInput.get().get(j).getID().contentEquals("screenlog")){
+						chains[i].coupledLoggersInput.get().remove(j);
 					}
 				}
 				
 				// remove all loggers of heated chains if they are not logged
 				if (!logHeatedChainsInput.get() && i != 0){
-					chains[i].loggersInput.get().clear();					
+					chains[i].coupledLoggersInput.get().clear();					
 				}
 				// remove only the screen logger
 				
@@ -137,13 +139,24 @@ public class CoupledMCMC extends MCMC {
 				chains[i].setStateFile(stateFileName.replace(".state", "." + i + "state"), restoreFromFile);				
 				chains[i].setChainNr(i);
 				chains[i].run();
+
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
 		}		
+		// ensure that each chain has the same starting point
+		threads = new Thread[chains.length];
+		finishTimes = new long[chains.length];
+		
+//		for (int k = 0; k < chains.length; k++) {			
+//			threads[k] = new HeatedChainThread(k, maxIteration);
+//			threads[k].start();
+//		}
+//		
+//		System.out.println(maxIteration);
+//		System.exit(0);
 
 		chainLength = chainLengthInput.get();
-		finishTimes = new long[chains.length];
 		
 		startOptimising = (int) optimizeDelayInput.get()/resampleEvery * nrExchangesInput.get();
 		
@@ -463,20 +476,22 @@ public class CoupledMCMC extends MCMC {
 	
 	/* swaps the states of mcmc1 and mcmc2 */
 	void swapLoggers(HeatedChain mcmc1, HeatedChain mcmc2) {
-		int mcmc2size = mcmc2.loggersInput.get().size();
-		int mcmc1size = mcmc1.loggersInput.get().size();
+		int mcmc2size = mcmc2.coupledLoggersInput.get().size();
+		int mcmc1size = mcmc1.coupledLoggersInput.get().size();
 		
 		for (int i = 0; i < mcmc2size; i++){
 			for (int j = 0; j < mcmc1size; j++){
-				if (mcmc2.loggersInput.get().get(i).getID().contentEquals(mcmc1.loggersInput.get().get(j).getID())){
+				if (mcmc2.coupledLoggersInput.get().get(i).getID().contentEquals(mcmc1.coupledLoggersInput.get().get(j).getID())){
 					// PrintStream printstream2 = new PrintStream(mcmc2.loggersInput.get().get(i).getM_out());
 					// PrintStream printstream1 = new PrintStream(mcmc1.loggersInput.get().get(j).getM_out());
 
-					PrintStream printstream2 = mcmc2.loggersInput.get().get(i).getM_out();
-					PrintStream printstream1 = mcmc1.loggersInput.get().get(j).getM_out();
-					
-					mcmc2.loggersInput.get().get(i).setPrintStream(printstream1);
-					mcmc1.loggersInput.get().get(j).setPrintStream(printstream2);					
+					PrintStream printstream2 = mcmc2.coupledLoggersInput.get().get(i).getM_out();
+					PrintStream printstream1 = mcmc1.coupledLoggersInput.get().get(j).getM_out();
+										
+					mcmc2.coupledLoggersInput.get().get(i).setM_out(printstream1);
+					mcmc1.coupledLoggersInput.get().get(j).setM_out(printstream2);
+//					printstream1.close();
+//					printstream2.close();
 				}					
 			}			
 		}		

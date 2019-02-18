@@ -2,7 +2,9 @@ package beast.coupledMCMC;
 
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import javax.xml.parsers.ParserConfigurationException;
 
@@ -11,7 +13,9 @@ import org.xml.sax.SAXException;
 import beast.core.Citation;
 import beast.core.Description;
 import beast.core.Distribution;
+import beast.core.Input;
 import beast.core.Logger;
+import beast.coupledMCMC.CoupledLogger;
 import beast.core.MCMC;
 import beast.core.Operator;
 import beast.core.OperatorSchedule;
@@ -29,6 +33,18 @@ DOI="10.1093/bioinformatics/btg427")
 @Description("Base class for doing Metropolis coupled MCMC. Each instance represenst a chain at a different temperature.")
 public class HeatedChain extends MCMC {
 	
+    final public Input<List<CoupledLogger>> coupledLoggersInput =
+            new Input<>("coupledLogger", "loggers for reporting progress of MCMC chain",
+                    new ArrayList<>(), Input.Validate.REQUIRED);
+    
+    public HeatedChain(){
+    	loggersInput.setRule(Input.Validate.FORBIDDEN);
+    }
+    
+    
+    
+
+	
 	
 	// temperature on which this chain runs
 	protected double beta = 1.0;
@@ -40,6 +56,9 @@ public class HeatedChain extends MCMC {
 	protected long currentSample = 0;
 	
 	private int chainNr = 0;
+	
+    protected List<CoupledLogger> loggers;
+
 
 	protected double getCurrentLogLikelihood() {
 		return oldLogLikelihood * beta;
@@ -84,8 +103,6 @@ public class HeatedChain extends MCMC {
 	}
 
 	
-
-
 	protected double calcCurrentLogLikelihoodRobustly() {
 		oldLogLikelihood = robustlyCalcPosterior(posterior);
 		return getCurrentLogLikelihood();
@@ -134,7 +151,7 @@ public class HeatedChain extends MCMC {
             throw new RuntimeException("Could not find a proper state to initialise. Perhaps try another seed.");
         }
 
-        loggers = loggersInput.get();
+        loggers = coupledLoggersInput.get();
 
         // put the loggers logging to stdout at the bottom of the logger list so that screen output is tidier.
         Collections.sort(loggers, (o1, o2) -> {
@@ -147,7 +164,7 @@ public class HeatedChain extends MCMC {
         // warn if none of the loggers is to stdout, so no feedback is given on screen
         boolean hasStdOutLogger = false;
         boolean hasScreenLog = false;
-        for (Logger l : loggers) {
+        for (CoupledLogger l : loggers) {
         	if (l.isLoggingToStdout()) {
         		hasStdOutLogger = true;
         	}
@@ -181,6 +198,8 @@ public class HeatedChain extends MCMC {
 	protected long runTillResample(long runUntil) throws Exception {
 		int corrections = 0;
 		final boolean isStochastic = posterior.isStochastic();
+		
+
 
 		for (long sampleNr = currentSample; sampleNr < runUntil; sampleNr++) {
             final long currentState = sampleNr;
@@ -231,7 +250,7 @@ public class HeatedChain extends MCMC {
             callUserFunction(sampleNr);
             
 //            // make sure we always save just before exiting
-            if (storeEvery > 0 && (sampleNr + 1) % storeEvery == 0 || sampleNr == chainLength) {
+            if (storeEvery > 0 && (sampleNr) % storeEvery == 0) {
                 /*final double logLikelihood = */
                 state.robustlyCalcNonStochasticPosterior(posterior);
                 state.storeToFile(sampleNr);
@@ -351,5 +370,13 @@ public class HeatedChain extends MCMC {
 	protected long getCurrentSample(){
 		return currentSample;
 	}
+	
+	@Override
+    public void log(final long sampleNr) {
+        for (final CoupledLogger log : loggers) {
+            log.log(sampleNr);
+        }
+    } // log
+
 	
 }
