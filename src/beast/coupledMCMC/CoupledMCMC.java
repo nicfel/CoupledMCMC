@@ -469,8 +469,11 @@ public class CoupledMCMC extends MCMC {
 		for (int i = 0; i < mcmc2size; i++){
 			for (int j = 0; j < mcmc1size; j++){
 				if (mcmc2.loggersInput.get().get(i).getID().contentEquals(mcmc1.loggersInput.get().get(j).getID())){
-					PrintStream printstream2 = new PrintStream(mcmc2.loggersInput.get().get(i).getM_out());
-					PrintStream printstream1 = new PrintStream(mcmc1.loggersInput.get().get(j).getM_out());
+					// PrintStream printstream2 = new PrintStream(mcmc2.loggersInput.get().get(i).getM_out());
+					// PrintStream printstream1 = new PrintStream(mcmc1.loggersInput.get().get(j).getM_out());
+
+					PrintStream printstream2 = mcmc2.loggersInput.get().get(i).getM_out();
+					PrintStream printstream1 = mcmc1.loggersInput.get().get(j).getM_out();
 					
 					mcmc2.loggersInput.get().get(i).setPrintStream(printstream1);
 					mcmc1.loggersInput.get().get(j).setPrintStream(printstream2);					
