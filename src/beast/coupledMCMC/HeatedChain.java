@@ -250,7 +250,7 @@ public class HeatedChain extends MCMC {
             callUserFunction(sampleNr);
             
 //            // make sure we always save just before exiting
-            if (storeEvery > 0 && (sampleNr) % storeEvery == 0) {
+            if (storeEvery > 0 && (sampleNr+1) % storeEvery == 0) {
                 /*final double logLikelihood = */
                 state.robustlyCalcNonStochasticPosterior(posterior);
                 state.storeToFile(sampleNr);

@@ -208,96 +208,6 @@ public class CoupledMCMC extends MCMC {
 			runPrescheduled();
 			return;
 		}
-		
-//		int totalSwaps = 0;
-//		int successfullSwaps = 0, successfullSwaps0 = 0;
-//		int optimizationSteps = 0;
-//
-//		for (int sampleNr = 0; sampleNr < chainLength; sampleNr += resampleEvery) {
-//			long startTime = System.currentTimeMillis();
-//			
-//			// start threads with individual chains here.
-//			threads = new Thread[chains.length];
-//			
-//			for (int k = 0; k < chains.length; k++) {
-//				threads[k] = new HeatedChainThread(k, resampleEvery);
-//				threads[k].start();
-//			}
-//
-//
-//			// wait for the chains to finish
-//	        startLogTime = System.currentTimeMillis();
-//			for (Thread thread : threads) {
-//				try {
-//					thread.join();
-//				} catch (InterruptedException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//			
-//			if (chains.length > 1) {
-//				for (int ne = 0; ne < nrExchangesInput.get(); ne++){ 
-//					
-//					int i,j;
-//					// resample state
-//					i = Randomizer.nextInt(chains.length);
-//					
-//					j = i;
-//					while (i == j) {
-//						j = Randomizer.nextInt(chains.length);
-//					}
-//					
-//					
-//					if (chains[i].getBeta() <  chains[j].getBeta()) {
-//						int tmp = i; i = j; j = tmp;
-//					}
-//				
-//					
-//					double p1before = chains[i].getCurrentLogLikelihood();
-//					double p2before = chains[j].getCurrentLogLikelihood();
-//	
-//					// robust calculations can be extremly expensive, just calculate the new probs instead 
-//					double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-//					double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
-//					
-//					double logAlpha = (p1after + p2after) - (p1before  + p2before);
-//					if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
-////						System.err.println("swap " + chains[i].getBeta() + " and " + chains[j].getBeta());
-//
-//						successfullSwaps++;
-//						if (i == 0) {
-//							successfullSwaps0++;
-//						}
-//
-//						// swap temperatures    
-//						double beta = chains[i].getBeta();
-//						chains[i].setBeta(chains[j].getBeta());						
-//						chains[j].setBeta(beta);
-//
-//						// swap loggers and the state file names
-//						swapLoggers(chains[i], chains[j]);
-//						
-//						// swap Operator tuning
-//						swapOperatorTuning(chains[i], chains[j]);
-//					}
-//					totalSwaps++;
-//
-//				}
-//				
-//				optimizationSteps++;
-//				System.out.println(sampleNr + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + startTime);
-//				System.err.println("succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
-//			}
-//		}
-//
-//		System.out.println("#Successfull swaps = " + successfullSwaps);
-//		System.out.println("#Successfull swaps with cold chain = " + successfullSwaps0);
-//		// wait 5 seconds for the log to complete
-//		try {
-//			Thread.sleep(5000);
-//		} catch (InterruptedException e) {
-//			// ignore
-//		}
 	} // run
 	
 	private void runPrescheduled(){
@@ -427,6 +337,15 @@ public class CoupledMCMC extends MCMC {
 //			System.err.println(sampleNr + " " + i + " " + j + " succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
 			
 		}
+		// ensure that every chains ran to the end even if it's not participating in the last swap
+		for (int i = 0; i < threads.length; i++){
+			try {
+				threads[i].join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		
 
 		System.err.println("#Successfull swaps = " + successfullSwaps);
 		System.err.println("#Successfull swaps with cold chain = " + successfullSwaps0);
