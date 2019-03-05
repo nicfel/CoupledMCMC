@@ -136,9 +136,20 @@ public class CoupledMCMC extends MCMC {
 				// initialize each chain individually
 				chains[i].setResampleEvery(resampleEvery);
 				chains[i].setTemperature(i, getTemperature(i));
-				chains[i].setStateFile(stateFileName.replace(".state", "." + i + "state"), restoreFromFile);				
+				
+				// needed to avoid error of putting the working dir twice
+				String[] splittedFileName = stateFileName.split("/");
+				
+				
+				chains[i].setStateFile(
+						splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);				
 				chains[i].setChainNr(i);
 				chains[i].run();
+				
+//				System.out.println(chains[0].coupledLoggersInput.get().get(0).fileName);
+//				System.out.println(chains[0].getStateFileName());
+//				System.exit(0);
+
 
 			} catch (Exception e) {
 				throw new RuntimeException(e);
