@@ -30,10 +30,10 @@ public class CoupledMCMC extends MCMC {
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
 	
-	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, teh temperature is optimzed after n swaps", false);
-	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimzed after n swaps", 1);
-	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many iterations, the temperature will be optimized (if optimising is set to true)", 100000);
-	public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
+//	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, teh temperature is optimzed after n swaps", false);
+//	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimzed after n swaps", 1);
+//	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many iterations, the temperature will be optimized (if optimising is set to true)", 100000);
+//	public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
 
 	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
 	
@@ -169,7 +169,7 @@ public class CoupledMCMC extends MCMC {
 
 		chainLength = chainLengthInput.get();
 		
-		startOptimising = (int) optimizeDelayInput.get()/resampleEvery * nrExchangesInput.get();
+//		startOptimising = (int) optimizeDelayInput.get()/resampleEvery * nrExchangesInput.get();
 		
 		// pre schedule which chains to swap when
 		if (preScheduleInput.get()){
