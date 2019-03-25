@@ -29,6 +29,7 @@
         collapsedPlugins ='beast.coupledMCMC.CoupledMCMC.logger'
         suppressPlugins = 'beast.coupledMCMC.CoupledMCMC.operator,
     		beast.coupledMCMC.CoupledMCMC.operatorschedule,
+        beast.coupledMCMC.CoupledMCMC.tempDir,
 	        beast.evolution.tree.coalescent.Coalescent.treeIntervals,
 	        beast.evolution.tree.coalescent.Coalescent.tree,
 	        beast.coupledMCMC.CoupledMCMC.state,
@@ -338,7 +339,7 @@
 
 <!-- framework for main model -->
 
-<run id="coupledMCMC" spec="beast.coupledMCMC.CoupledMCMC" logHeatedChains="true" maxTemperature="0.1" resampleEvery="1000" chainLength="10000000" chains="2">
+<run id="mcmc" spec="beast.coupledMCMC.CoupledMCMC" logHeatedChains="true" maxTemperature="0.1" resampleEvery="1000" chainLength="10000000" chains="2">
         <state storeEvery='5000' id='state'>
         </state>
 

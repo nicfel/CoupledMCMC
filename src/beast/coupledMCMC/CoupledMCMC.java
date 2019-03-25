@@ -26,9 +26,9 @@ public class CoupledMCMC extends MCMC {
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
 	
 	// input of the difference between temperature scalers
-	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature scaler, the higher this value, the hotter the chains", 0.1);
+	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature difference between the i-th and the i-th+1 chain", 0.1);
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
-	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
+	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", true);
 	
 //	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, teh temperature is optimzed after n swaps", false);
 //	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimzed after n swaps", 1);
