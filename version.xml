@@ -1,4 +1,11 @@
 <addon name="CoupledMCMC" version="0.1.4">
   <depends on="beast2" atleast="2.5.2"/>
   <!-- Add other dependencies as necessary. -->
+  
+  <depends on='BEASTLabs' atleast='1.8.0'/>
+  <packageapp description="MCMC to Coupled MCMC converter"
+              class="beast.coupledMCMC.MCMC2CoupledMCMC"
+              args=""
+            />
+
 </addon>
