@@ -3,6 +3,7 @@
 .project
 /bin/
 /examples/*.*
+!/examples/ds1_coupledMCMC_1.xml
 /build/
 /build-lib/
 /build-beast/
