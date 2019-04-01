@@ -1,7 +1,36 @@
 # Coupled MCMC for BEAST2
-## How to set-up your BEAST2 analysis to run with coupled MCMC/parallel tempering  
 
-In order to setupa pre-prepared xml to run with coupled MCMC, open the  `*.xml` and change the MCMC line in the xml.
+
+## Installing the CoupledMCMC package
+
+CoupledMCMC is a [BEAST 2](http://beast2.org) package, which you can install through the 
+[package manager](http://www.beast2.org/managing-packages/) that comes with BEAST.
+Choose `CoupledMCMC` from the list of packages.
+
+## How to set up your BEAST2 analysis to run with coupled MCMC/parallel tempering 
+
+### By using the conversion app
+
+After you installed the `CoupledMCMC` package (version 0.1.5 or better), the `MCMC2CoupledMCMC` app becomes available in the app launcher.
+
+>
+> 1. Create MCMC analysis in BEAUti with any of the available templates, save as `mcmc.xml`
+> 
+> Now there are 2 ways to proceed:
+> 
+> 2a. from a terminal, run
+>
+>  /path/to/beast/bin/applauncher MCMC2CoupledMCMC -xml mcmc.xml -o mc3.xml
+>
+> This creates a file `mc3.xml` containing a CoupledMCMC analysis with the same model/operators/loggers etc as the `mcmc.xml` analysis.
+>
+> 2b. from BEAUti, use menu `File > Launch apps`, select `MCMC to Coupled MCMC converter` from the available apps, fill in form and click OK
+>
+
+
+### By editing an XML file in a text editor
+
+In order to set up a pre-prepared xml to run with coupled MCMC, open the  `*.xml` and change the MCMC line in the xml.
 
 To do so, go to the line with:
 
