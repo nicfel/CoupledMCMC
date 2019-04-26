@@ -25,20 +25,20 @@ import beast.util.XMLProducer;
 public class MCMC2CoupledMCMC extends Runnable {
 	
 	public Input<XMLFile> model1Input = new Input<>("xml",
-			"file name of BEAST XML file containing the model for which to create a GSS XML file for",
+			"file name of BEAST XML file containing the model for which to create a coupled MCMC XML file for",
 			new XMLFile("examples/normalTest-1XXX.xml"), Validate.REQUIRED);
 	public Input<OutFile> outputInput = new Input<>("output", "where to save the file", new OutFile("beast.xml"));
 	
-	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
+	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", "number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
 	
 	// input of the difference between temperature scalers
-	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature difference between the i-th and the i-th+1 chain", 0.1);
-	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
-	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", true);
+	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature", "temperature difference between the i-th and the i-th+1 chain", 0.1);
+	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature", "temperature scaler, the higher this value, the hotter the chains");	
+	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains", "if true, log files for heated chains are also printed", true);
 
-	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
+	public Input<Boolean> preScheduleInput = new Input<>("preSchedule", "if true, how long chains are run for is scheduled at the beginning", true);
 	
 	
 	@Override
