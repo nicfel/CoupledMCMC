@@ -129,7 +129,8 @@ public class CoupledMCMC extends MCMC {
 				
 				// remove all loggers of heated chains if they are not logged
 				if (!logHeatedChainsInput.get() && i != 0){
-					chains[i].coupledLoggersInput.get().clear();					
+					for (int j = 0; j < chains[i].coupledLoggersInput.get().size(); j++)
+						chains[i].coupledLoggersInput.get().get(j).setSuppressLogging(true);					
 				}
 				// remove only the screen logger
 				
@@ -302,9 +303,9 @@ public class CoupledMCMC extends MCMC {
 				double beta = chains[i].getBeta();
 				chains[i].setBeta(chains[j].getBeta());						
 				chains[j].setBeta(beta);
-
+				
 				// swap loggers and the state file names
-				swapLoggers(chains[i], chains[j]);
+				swapLoggers(chains[i], chains[j]);				
 				
 				// swap Operator tuning
 				swapOperatorTuning(chains[i], chains[j]);
@@ -412,8 +413,14 @@ public class CoupledMCMC extends MCMC {
 		for (int i = 0; i < mcmc2size; i++){
 			for (int j = 0; j < mcmc1size; j++){
 				if (mcmc2.coupledLoggersInput.get().get(i).getID().contentEquals(mcmc1.coupledLoggersInput.get().get(j).getID())){
-					// PrintStream printstream2 = new PrintStream(mcmc2.loggersInput.get().get(i).getM_out());
-					// PrintStream printstream1 = new PrintStream(mcmc1.loggersInput.get().get(j).getM_out());
+					if (!logHeatedChainsInput.get()){
+						boolean suppressLogging1 = mcmc1.coupledLoggersInput.get().get(i).getSuppressLogging();
+						boolean suppressLogging2 = mcmc2.coupledLoggersInput.get().get(j).getSuppressLogging();
+						
+						mcmc1.coupledLoggersInput.get().get(i).setSuppressLogging(suppressLogging2);
+						mcmc2.coupledLoggersInput.get().get(j).setSuppressLogging(suppressLogging1);
+
+					}
 
 					PrintStream printstream2 = mcmc2.coupledLoggersInput.get().get(i).getM_out();
 					PrintStream printstream1 = mcmc1.coupledLoggersInput.get().get(j).getM_out();
@@ -431,6 +438,7 @@ public class CoupledMCMC extends MCMC {
 		mcmc1.setStateFileName(mcmc2.getStateFileName());
 		mcmc2.setStateFileName(stateFileName);
 	}
+
 
 	void swapOperatorTuning(HeatedChain mcmc1, HeatedChain mcmc2) {
 		List<Operator> operatorList1 = new ArrayList<Operator>();
