@@ -92,8 +92,11 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("spec=\"logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");
+		
+		// check if the loggers have a same issue
 
 	
         String sMCMCMC = this.getClass().getName();
@@ -107,8 +110,6 @@ public class CoupledMCMC extends MCMC {
 		}
 //		long nSeed = Randomizer.getSeed();
 			
-
-		
 		// create new chains		
 		for (int i = 0; i < chains.length; i++) {
 			XMLParser parser = new XMLParser();
