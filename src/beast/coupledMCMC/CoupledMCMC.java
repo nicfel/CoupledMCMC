@@ -80,9 +80,7 @@ public class CoupledMCMC extends MCMC {
 	private void initRun(){
 		String sXML = new XMLProducer().toXML(this);
 		
-		// removes coupled MCMC parts of the xml
-		
-		
+		// removes coupled MCMC parts of the xml		
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
