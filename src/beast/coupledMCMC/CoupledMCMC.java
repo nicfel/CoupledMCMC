@@ -81,6 +81,8 @@ public class CoupledMCMC extends MCMC {
 		String sXML = new XMLProducer().toXML(this);
 		
 		// removes coupled MCMC parts of the xml
+		
+		
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
@@ -92,13 +94,12 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("spec=\"logger\"", "");
+		
+		sXML = sXML.replaceAll("spec=\"Logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");
 		
 		// check if the loggers have a same issue
-
-	
         String sMCMCMC = this.getClass().getName();
 		while (sMCMCMC.length() > 0) {
 			sXML = sXML.replaceAll("\\b" + CoupledMCMC.class.getName() + "\\b", HeatedChain.class.getName());
