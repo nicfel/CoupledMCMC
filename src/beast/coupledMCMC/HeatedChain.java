@@ -181,7 +181,7 @@ public class HeatedChain extends MCMC {
         	}
         }
 
-        // initialises log so that log file headers are written, etc.
+        // initialises log such that log file headers are written, etc.
         for (final Logger log : loggers) {
             log.init();
         }

@@ -29,13 +29,14 @@ public class CoupledLogger extends Logger {
     }
 
     
-    @Override
-	protected boolean openLogFile() throws IOException {
-    	if (!suppressLogging)
-    		super.openLogFile();
-    	
-    	return true;
-	}
+    
+//    @Override
+//	protected boolean openLogFile() throws IOException {
+//    	if (!suppressLogging)
+//    		super.openLogFile();
+//    	
+//    	return false;
+//	}
     
     @Override
     public void log(long sampleNr){
