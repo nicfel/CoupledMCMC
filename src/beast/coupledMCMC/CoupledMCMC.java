@@ -2,24 +2,36 @@ package beast.coupledMCMC;
 
 
 import beast.core.*;
+import beast.core.Citation.Citations;
 import beast.core.util.Log;
 import beast.util.Randomizer;
 import beast.util.XMLParser;
 import beast.util.XMLProducer;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-@Citation(value= "Altekar G, Dwarkadas S, Huelsenbeck J and Ronquist F (2004). \n" +
+@Citations(
+		{
+		@Citation(value= "Müller, Nicola Felix, and Remco Bouckaert. Coupled MCMC in BEAST 2. bioRxiv (2019): 603514. ", 
+				year = 2019, firstAuthorSurname = "Müller",
+				DOI="10.1101/603514"),
+		@Citation(value="Bouckaert, Remco, Timothy G. Vaughan, Joëlle Barido-Sottani, Sebastián Duchêne, \n"
+				+ "  Mathieu Fourment, Alexandra Gavryushkina, Joseph Heled et al. \n"
+				+ "  BEAST 2.5: An advanced software platform for Bayesian evolutionary analysis. \n"
+				+ "  PLoS computational biology 15, no. 4 (2019): e1006650.", 
+		        year = 2019, firstAuthorSurname = "bouckaert",
+				DOI="10.1371/journal.pcbi.1006650"),	
+		@Citation(value= "Altekar G, Dwarkadas S, Huelsenbeck J and Ronquist F (2004). \n" +
 				"  Parallel Metropolis Coupled Markov Chain Monte Carlo For Bayesian Phylogenetic Inference.\n" +
 				"  Bioinformatics, 20(3), 407-415."
-		, year = 2004, firstAuthorSurname = "Altekar",
-		DOI="10.1093/bioinformatics/btg427")
-@Description("")
+				, year = 2004, firstAuthorSurname = "Altekar",
+				DOI="10.1093/bioinformatics/btg427")
+		}
+)		
+@Description("Parallel Metropolis Coupled Markov Chain Monte Carlo")
 public class CoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
@@ -30,8 +42,8 @@ public class CoupledMCMC extends MCMC {
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", true);
 	
-//	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, teh temperature is optimzed after n swaps", false);
-//	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimzed after n swaps", 1);
+//	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, the temperature is optimised after n swaps", false);
+//	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimised after n swaps", 1);
 //	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many iterations, the temperature will be optimized (if optimising is set to true)", 100000);
 //	public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
 
@@ -78,7 +90,8 @@ public class CoupledMCMC extends MCMC {
 	} // initAndValidate
 	
 	private void initRun(){
-		String sXML = new XMLProducer().toXML(this);
+		XMLProducer p = new XMLProducer();
+		String sXML = p.toXML(this, new ArrayList<>());
 		
 		// removes coupled MCMC parts of the xml		
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");

@@ -20,16 +20,30 @@ import beast.core.MCMC;
 import beast.core.Operator;
 import beast.core.OperatorSchedule;
 import beast.core.StateNodeInitialiser;
+import beast.core.Citation.Citations;
 import beast.core.util.Evaluator;
 import beast.core.util.Log;
 //import beast.util.Randomizer;
 import beast.util.Randomizer;
 
-@Citation(value= "Altekar G, Dwarkadas S, Huelsenbeck J and Ronquist F (2004). \n" +
-		"  Parallel Metropolis Coupled Markov Chain Monte Carlo For Bayesian Phylogenetic Inference.\n" +
-		"  Bioinformatics, 20(3), 407-415."
-, year = 2004, firstAuthorSurname = "Altekar",
-DOI="10.1093/bioinformatics/btg427")
+@Citations(
+		{
+		@Citation(value= "Müller, Nicola Felix, and Remco Bouckaert. Coupled MCMC in BEAST 2. bioRxiv (2019): 603514. ", 
+				year = 2019, firstAuthorSurname = "Müller",
+				DOI="10.1101/603514"),
+		@Citation(value="Bouckaert, Remco, Timothy G. Vaughan, Joëlle Barido-Sottani, Sebastián Duchêne, \n"
+				+ "  Mathieu Fourment, Alexandra Gavryushkina, Joseph Heled et al. \n"
+				+ "  BEAST 2.5: An advanced software platform for Bayesian evolutionary analysis. \n"
+				+ "  PLoS computational biology 15, no. 4 (2019): e1006650.", 
+		        year = 2019, firstAuthorSurname = "bouckaert",
+				DOI="10.1371/journal.pcbi.1006650"),	
+		@Citation(value= "Altekar G, Dwarkadas S, Huelsenbeck J and Ronquist F (2004). \n" +
+				"  Parallel Metropolis Coupled Markov Chain Monte Carlo For Bayesian Phylogenetic Inference.\n" +
+				"  Bioinformatics, 20(3), 407-415."
+				, year = 2004, firstAuthorSurname = "Altekar",
+				DOI="10.1093/bioinformatics/btg427")
+		}
+)		
 @Description("Base class for doing Metropolis coupled MCMC. Each instance represenst a chain at a different temperature.")
 public class HeatedChain extends MCMC {
 	
