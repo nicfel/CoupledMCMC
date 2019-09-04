@@ -4,6 +4,7 @@ package beast.coupledMCMC;
 import beast.core.*;
 import beast.core.Citation.Citations;
 import beast.core.util.Log;
+import beast.util.HeapSort;
 import beast.util.Randomizer;
 import beast.util.XMLParser;
 import beast.util.XMLProducer;
@@ -42,10 +43,11 @@ public class CoupledMCMC extends MCMC {
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", true);
 	
-//	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, the temperature is optimised after n swaps", false);
-//	public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimised after n swaps", 1);
-//	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many iterations, the temperature will be optimized (if optimising is set to true)", 100000);
-//	public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
+	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, the temperature is optimised after n swaps", false);
+	//public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimised after n swaps", 1);
+	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
+	// public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
+	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.5);
 
 	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
 	
@@ -324,6 +326,44 @@ public class CoupledMCMC extends MCMC {
 				swapOperatorTuning(chains[i], chains[j]);
 			}
 			totalSwaps++;
+			
+			if (optimiseTemperatureInput.get() && totalSwaps > optimizeDelayInput.get()) {
+				// update maxTemperature
+				double p = (double) successfullSwaps / totalSwaps;
+				double target = targetAcceptanceProbabilityInput.get();				
+				double delta = (p - target) / totalSwaps;
+	            maxTemperature += delta;
+	            
+	            // boundary case checks
+	    		if (maxTemperatureInput.get() != null){
+	    			maxTemperature = Math.max(maxTemperature, maxTemperatureInput.get()); 
+	            } else if (maxTemperature < 0) {
+	            	maxTemperature = 0;
+	            }
+	            
+	            // figure out order of chains
+	            int n = chains.length;
+	            int [] order = new int[n];
+	            for (int k = 0; k < n; k++) {
+	            	order[k] = k;
+	            }
+	            double [] temp = new double[chains.length];
+	            for (int k = 0; k < n; k++) {
+	            	temp[k] = 1.0 - chains[k].getBeta();
+	            }
+	            HeapSort.sort(temp, order);
+	            
+//	            System.err.println("before: " + Arrays.toString(temp));
+	            
+	            // set new temperatures asynchronously, in same order as before
+	            for (int k = 0; k < n; k++) {
+	            	chains[order[k]].setTemperature(k, getTemperature(k));
+	            }
+//	            for (int k = 0; k < chains.length; k++) {
+//	            	temp[k] = 1.0 - chains[k].getBeta();
+//	            }
+//	            System.err.println("after: " + Arrays.toString(temp));
+			}
 
 			runTillIteration[i].remove(0);
 			runTillIteration[j].remove(0);
@@ -339,7 +379,7 @@ public class CoupledMCMC extends MCMC {
 			threads[j] = new HeatedChainThread(j, runj);
 			threads[j].start();
 			
-			System.out.print("\t" + sampleNr + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + " ");
+			System.out.print("\t" + sampleNr + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + maxTemperature + " ");
 			if (startLogTime>0){			
 	            final long logTime = System.currentTimeMillis();
 	            final int secondsPerMSamples = (int) ((logTime - startLogTime) * 1000.0 / (sampleNr - startSample + 1.0));

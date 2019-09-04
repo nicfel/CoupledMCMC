@@ -88,6 +88,7 @@ public class HeatedChain extends MCMC {
 
 	}
 	
+	// RRB: what is the purpose of the first argument?
 	protected void setTemperature(int i, double temperature) {
 		this.beta = 1/(1 + temperature);
 	}
