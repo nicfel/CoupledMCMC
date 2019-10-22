@@ -1,6 +1,7 @@
 package beast.coupledMCMC;
 
 
+import beast.app.beauti.BeautiDoc;
 import beast.core.*;
 import beast.core.Citation.Citations;
 import beast.core.util.Log;
@@ -9,8 +10,10 @@ import beast.util.Randomizer;
 import beast.util.XMLParser;
 import beast.util.XMLProducer;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -54,7 +57,6 @@ public class CoupledMCMC extends MCMC {
 	// nr of samples between re-arranging states
 	int resampleEvery;	
 	double maxTemperature;
-	int startOptimising;	
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	HeatedChain [] chains;
@@ -243,7 +245,26 @@ public class CoupledMCMC extends MCMC {
 		int successfullSwaps = 0, successfullSwaps0 = 0;
 		
 		
-
+		if (restoreFromFile) {
+			try {
+				String str = BeautiDoc.load(new File(stateFileName));
+				String [] strs = str.split(",");
+				totalSwaps = Integer.parseInt(strs[0]);
+				successfullSwaps = Integer.parseInt(strs[1]);
+				successfullSwaps0 = Integer.parseInt(strs[2]);
+				maxTemperature = Double.parseDouble(strs[3]);
+				Log.warning("Restoring: totalSwaps=" + totalSwaps + 
+						" successfullSwaps=" + successfullSwaps +
+						" successfullSwaps0=" + successfullSwaps0 +
+						" maxTemperature" + maxTemperature);
+	            for (int k = 0; k < chains.length; k++) {
+	            	chains[k].setBeta(Double.parseDouble(strs[k + 4]));
+	            }
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 		
 		// run each thread until it's next swapping time
 		// start threads with individual chains here.
@@ -264,7 +285,6 @@ public class CoupledMCMC extends MCMC {
 		
 		for (long sampleNr = resampleEvery; sampleNr < chainLength; sampleNr += resampleEvery) {
 			
-				
 			
 			// get the chains to swap
 			int i=-1, j=-1;
@@ -398,6 +418,25 @@ public class CoupledMCMC extends MCMC {
 				startLogTime = System.currentTimeMillis();
 			}
 
+			if (sampleNr % storeEveryInput.get() == 0) {
+		        try {
+		            PrintStream out = new PrintStream(stateFileName + ".new");
+		            out.print(totalSwaps + "," + successfullSwaps + "," + successfullSwaps0 + "," + maxTemperature);
+		            for (int k = 0; k < chains.length; k++) {
+		            	out.print("," + chains[k].getBeta());
+		            }
+		            //out.print(new XMLProducer().toXML(this));
+		            out.close();
+		            File newStateFile = new File(stateFileName + ".new");
+		            File oldStateFile = new File(stateFileName);
+		            oldStateFile.delete();
+		            // newStateFile.renameTo(oldStateFile); -- unstable under windows
+		            Files.move(newStateFile.toPath(), oldStateFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+		        } catch (Exception e) {
+		            e.printStackTrace();
+		        }
+			}
+
 				
 //			System.err.println(sampleNr + " " + i + " " + j + " succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
 			
@@ -422,41 +461,6 @@ public class CoupledMCMC extends MCMC {
 		}
 
 	}
-		
-    public double updateTemperature(int successfullSwaps, int totalSwaps) {
-        double successfullFraction = (double) successfullSwaps/totalSwaps;
-        final double target = 0.35;
-
-        double count = (totalSwaps + 1.0);
-//        switch (transform) {
-//            case log:
-//                double count = Math.log(totalSwaps + 1.0);
-//                break;
-//            case sqrt:
-//                double count = Math.sqrt(totalSwaps);
-//                break;
-//            case none:
-//            	break;
-//            default:
-//            	break;
-//        }
-
-        double deltaP = successfullFraction - target;
-    	System.out.println(successfullFraction + " " + target + " " + Math.exp(1/count * deltaP));
-
-        
-  
-        maxTemperature *= Math.exp(1/count * deltaP);
-        
-//        maxTemperature*=0.999999;
-        maxTemperature = Math.min(maxTemperature, 1.0);
-//        deltaP += Math.log(1.0 / temperatureScaler - 1.0);        
-        
-        if (deltaP > -Double.MAX_VALUE && deltaP < Double.MAX_VALUE) {
-            return deltaP;
-        }
-        return 0;
-    }
 	
 	/* swaps the states of mcmc1 and mcmc2 */
 	void swapLoggers(HeatedChain mcmc1, HeatedChain mcmc2) {
