@@ -47,7 +47,7 @@ public class CoupledMCMC extends MCMC {
 	//public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimised after n swaps", 1);
 	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
 	// public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
-	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.5);
+	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.234);
 
 	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
 	
@@ -107,7 +107,7 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
-		
+		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("spec=\"Logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");
@@ -353,16 +353,11 @@ public class CoupledMCMC extends MCMC {
 	            }
 	            HeapSort.sort(temp, order);
 	            
-//	            System.err.println("before: " + Arrays.toString(temp));
 	            
 	            // set new temperatures asynchronously, in same order as before
 	            for (int k = 0; k < n; k++) {
 	            	chains[order[k]].setTemperature(k, getTemperature(k));
 	            }
-//	            for (int k = 0; k < chains.length; k++) {
-//	            	temp[k] = 1.0 - chains[k].getBeta();
-//	            }
-//	            System.err.println("after: " + Arrays.toString(temp));
 			}
 
 			runTillIteration[i].remove(0);
