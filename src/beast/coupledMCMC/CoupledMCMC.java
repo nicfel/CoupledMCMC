@@ -149,8 +149,6 @@ public class CoupledMCMC extends MCMC {
 					for (int j = 0; j < chains[i].coupledLoggersInput.get().size(); j++)
 						chains[i].coupledLoggersInput.get().get(j).setSuppressLogging(true);					
 				}
-				// remove only the screen logger
-				
 				// initialize each chain individually
 				chains[i].setResampleEvery(resampleEvery);
 				chains[i].setTemperature(i, getTemperature(i));
@@ -163,11 +161,6 @@ public class CoupledMCMC extends MCMC {
 						splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);				
 				chains[i].setChainNr(i);
 				chains[i].run();
-				
-//				System.out.println(chains[0].coupledLoggersInput.get().get(0).fileName);
-//				System.out.println(chains[0].getStateFileName());
-//				System.exit(0);
-
 
 			} catch (Exception e) {
 				throw new RuntimeException(e);
@@ -177,17 +170,8 @@ public class CoupledMCMC extends MCMC {
 		threads = new Thread[chains.length];
 		finishTimes = new long[chains.length];
 		
-//		for (int k = 0; k < chains.length; k++) {			
-//			threads[k] = new HeatedChainThread(k, maxIteration);
-//			threads[k].start();
-//		}
-//		
-//		System.out.println(maxIteration);
-//		System.exit(0);
 
 		chainLength = chainLengthInput.get();
-		
-//		startOptimising = (int) optimizeDelayInput.get()/resampleEvery * nrExchangesInput.get();
 		
 		// pre schedule which chains to swap when
 		if (preScheduleInput.get()){
@@ -479,8 +463,6 @@ public class CoupledMCMC extends MCMC {
 										
 					mcmc2.coupledLoggersInput.get().get(i).setM_out(printstream1);
 					mcmc1.coupledLoggersInput.get().get(j).setM_out(printstream2);
-//					printstream1.close();
-//					printstream2.close();
 				}					
 			}			
 		}		
