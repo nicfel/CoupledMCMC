@@ -45,11 +45,6 @@ public class HeatedChain extends MCMC {
     	loggersInput.setRule(Input.Validate.FORBIDDEN);
     }
     
-    
-    
-
-	
-	
 	// temperature on which this chain runs
 	protected double beta = 1.0;
 	
@@ -105,6 +100,7 @@ public class HeatedChain extends MCMC {
 	
 	protected void setStateFileName(String stateFileName){
 		this.stateFileName = stateFileName;
+		state.setStateFileName(stateFileName);
 	}
 
 	
@@ -205,8 +201,7 @@ public class HeatedChain extends MCMC {
 		final boolean isStochastic = posterior.isStochastic();
 		
 
-
-		for (long sampleNr = currentSample; sampleNr < runUntil; sampleNr++) {
+		for (long sampleNr = currentSample; sampleNr <= runUntil; sampleNr++) {
             final long currentState = sampleNr;
             final Operator operator = propagateState(sampleNr);
 //            System.out.println(chainNr + " " + sampleNr);
@@ -254,13 +249,16 @@ public class HeatedChain extends MCMC {
             }
             callUserFunction(sampleNr);
             
+           
 //            // make sure we always save just before exiting
-            if (storeEvery > 0 && (sampleNr+1) % storeEvery == 0) {
+            if (storeEvery > 0 && (sampleNr+1) % storeEvery == 0 || sampleNr == chainLength) {
                 /*final double logLikelihood = */
                 state.robustlyCalcNonStochasticPosterior(posterior);
                 state.storeToFile(sampleNr);
                 operatorSchedule.storeToFile();
             }
+            
+
             
             if (posterior.getCurrentLogP() == Double.POSITIVE_INFINITY) {
             	throw new RuntimeException("Encountered a positive infinite posterior. This is a sign there may be numeric instability in the model.");
@@ -270,7 +268,8 @@ public class HeatedChain extends MCMC {
         	Log.err.println("\n\nNB: " + corrections + " posterior calculation corrections were required. This analysis may not be valid!\n\n");
         }
 
-        currentSample = runUntil;
+        // the plus 1 is required such that the currentSample is not recomputed
+        currentSample = runUntil+1;
         
         return System.currentTimeMillis();
 	}
@@ -364,7 +363,6 @@ public class HeatedChain extends MCMC {
         return operator;
     }
 
-
     private boolean isTooDifferent(double logLikelihood, double originalLogP) {
     	//return Math.abs((logLikelihood - originalLogP)/originalLogP) > 1e-6;
     	return Math.abs(logLikelihood - originalLogP) > 1e-6;
@@ -396,6 +394,8 @@ public class HeatedChain extends MCMC {
 
         stateFileName = fileName;
         restoreFromFile = isRestoreFromFile;
+        
+        state.setStateFileName(stateFileName);
     }
 	
 }

@@ -11,6 +11,7 @@ import beast.util.XMLParser;
 import beast.util.XMLProducer;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -46,17 +47,20 @@ public class CoupledMCMC extends MCMC {
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", true);
 	
-	public Input<Boolean> optimiseTemperatureInput = new Input<>("optimiseTemperature","if specified, the temperature is optimised after n swaps", false);
-	//public Input<Integer> nrExchangesInput = new Input<>("nrExchanges","if specified, the temperature is optimised after n swaps", 1);
+	// Input on whether the temperature between chains should be optimized
+	public Input<Boolean> GloballyOptimiseTemperatureInput = new Input<>("globallyOptimiseTemperature","if specified, the temperature is optimised globally after n swaps", false);
+	public Input<Boolean> LocallyOptimiseTemperatureInput = new Input<>("locallyOptimiseTemperature","if true, the temperature is adapted locally after n swaps", false);
 	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
-	// public Input<Integer> optimizeEveryInput = new Input<>("optimizeEvery","only optimizes the temperature every n-th potential step", 1);
 	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.234);
-
+	
 	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
 	
 	// nr of samples between re-arranging states
 	int resampleEvery;	
 	double maxTemperature;
+	
+	boolean optimiseLocally = false;
+	boolean optimise = true;
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	HeatedChain [] chains;
@@ -64,11 +68,19 @@ public class CoupledMCMC extends MCMC {
 	Thread [] threads;
 	/** keep track of time taken between logs to estimate speed **/
     long startLogTime;
+    /** keeps track of the last n swaps and if they were accepted or not **/
+    List<Boolean> acceptedSwaps;
 
 	// keep track of when threads finish in order to optimise thread usage
 	long [] finishTimes;
 		
 	private ArrayList<Long>[] runTillIteration;
+	
+	int totalSwaps = 0;
+	int successfullSwaps = 0, successfullSwaps0 = 0;
+	
+	long sampleOffset = 0;
+
 
 
 	@Override
@@ -91,6 +103,16 @@ public class CoupledMCMC extends MCMC {
 			maxTemperature = deltaTemperatureInput.get()*(nrOfChainsInput.get()-1);
 		}
 		
+		acceptedSwaps = new ArrayList<>();		
+		
+		
+		if (GloballyOptimiseTemperatureInput.get() && LocallyOptimiseTemperatureInput.get())
+			throw new IllegalArgumentException("Temperture is optimisation is specified to be both, global and local. Only one can be true");			
+		else if (LocallyOptimiseTemperatureInput.get())
+			optimiseLocally = true;
+		else
+			optimise = false;
+		
 	} // initAndValidate
 	
 	private void initRun(){
@@ -103,7 +125,8 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("deltaTemperature=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("maxTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimiseTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("GloballyOptimiseTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("locallyOptimiseTemperature=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("logHeatedChains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("optimizeDelay=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
@@ -124,7 +147,6 @@ public class CoupledMCMC extends MCMC {
 				sMCMCMC = "";
 			}
 		}
-//		long nSeed = Randomizer.getSeed();
 			
 		// create new chains		
 		for (int i = 0; i < chains.length; i++) {
@@ -156,9 +178,8 @@ public class CoupledMCMC extends MCMC {
 				// needed to avoid error of putting the working dir twice
 				String[] splittedFileName = stateFileName.split("/");
 				
-				
 				chains[i].setStateFile(
-						splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);				
+						splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);
 				chains[i].setChainNr(i);
 				chains[i].run();
 
@@ -182,11 +203,7 @@ public class CoupledMCMC extends MCMC {
 			System.out.println("restoring from file, printing to screen but not to loggers will start again from 0");
 			System.out.println("we further assume that all chains ended in the same state, if logging heated chains" +
 			" the different heated chains can have different amount of interations");
-		}
-		
-		
-		System.out.println("sample\tswapsColdCain\tswapProbability");
-
+		}		
 		
 	}
 	
@@ -214,8 +231,51 @@ public class CoupledMCMC extends MCMC {
 	
 	@Override 
 	public void run() throws IOException {
-		
 		initRun();
+		
+		if (restoreFromFile) {
+			try {
+				String str = BeautiDoc.load(new File(stateFileName));
+				String [] strs = str.split("\n");
+				for (int i = 0; i < strs.length; i++) {
+					String [] Spltstr = strs[i].replaceAll("\\s", "").split("=");
+					if (Spltstr[0].contentEquals("sample"))
+						sampleOffset = Long.parseLong(Spltstr[1]);
+					else if (Spltstr[0].contentEquals("totalSwaps"))
+						totalSwaps = Integer.parseInt(Spltstr[1]);
+					else if (Spltstr[0].contentEquals("successfullSwaps"))
+						successfullSwaps = Integer.parseInt(Spltstr[1]);
+					else if (Spltstr[0].contentEquals("successfullSwaps0"))
+						successfullSwaps0 = Integer.parseInt(Spltstr[1]);
+					else if (Spltstr[0].contentEquals("maxTemperature"))
+						maxTemperature = Double.parseDouble(Spltstr[1]);
+					else if (Spltstr[0].contentEquals("lastSwaps")) {
+						String[] tmp = Spltstr[1].replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
+						acceptedSwaps = new ArrayList<>();
+						for (int j = 0; j < tmp.length; j++)
+							acceptedSwaps.add(Boolean.parseBoolean(tmp[j]));
+					}					
+				}			
+				
+				Log.warning("Restoring: totalSwaps=" + totalSwaps + 
+						" successfullSwaps=" + successfullSwaps +
+						" successfullSwaps0=" + successfullSwaps0 +
+						" maxTemperature=" + maxTemperature);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+//		for (int i = 0; i < chains.length; i++) {
+//			System.out.println(chains[i].getBeta());
+//		}
+//		for (int i = 0; i < chains.length; i++) {
+//			System.out.println(chains[i].getUnscaledCurrentLogLikelihood());
+//		}
+//
+//		System.exit(0);
+
 		
 		if (preScheduleInput.get()){
 			runPrescheduled();
@@ -225,31 +285,7 @@ public class CoupledMCMC extends MCMC {
 	
 	private void runPrescheduled(){
 		
-		int totalSwaps = 0;
-		int successfullSwaps = 0, successfullSwaps0 = 0;
-		
-		
-		if (restoreFromFile) {
-			try {
-				String str = BeautiDoc.load(new File(stateFileName));
-				String [] strs = str.split(",");
-				totalSwaps = Integer.parseInt(strs[0]);
-				successfullSwaps = Integer.parseInt(strs[1]);
-				successfullSwaps0 = Integer.parseInt(strs[2]);
-				maxTemperature = Double.parseDouble(strs[3]);
-				Log.warning("Restoring: totalSwaps=" + totalSwaps + 
-						" successfullSwaps=" + successfullSwaps +
-						" successfullSwaps0=" + successfullSwaps0 +
-						" maxTemperature" + maxTemperature);
-	            for (int k = 0; k < chains.length; k++) {
-	            	chains[k].setBeta(Double.parseDouble(strs[k + 4]));
-	            }
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-		
+
 		// run each thread until it's next swapping time
 		// start threads with individual chains here.
 		threads = new Thread[chains.length];
@@ -267,7 +303,15 @@ public class CoupledMCMC extends MCMC {
 		startLogTime = -1;
 		long startSample = 0;
 		
-		for (long sampleNr = resampleEvery; sampleNr < chainLength; sampleNr += resampleEvery) {
+		// print header for system output
+		System.out.println("sample\tswapsColdCain\tswapProbability\tdeltaTemperature");		
+		double currProb = ((double) successfullSwaps/totalSwaps);
+		if (Double.isNaN(currProb))
+			currProb = 0.0;
+		System.out.print("\t" + (startSample + sampleOffset) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + maxTemperature + "\n");
+
+		
+		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {
 			
 			
 			// get the chains to swap
@@ -327,13 +371,34 @@ public class CoupledMCMC extends MCMC {
 				swapLoggers(chains[i], chains[j]);				
 				
 				// swap Operator tuning
-				swapOperatorTuning(chains[i], chains[j]);
+				swapOperatorTuning(chains[i], chains[j]);				
+				
+				if (optimiseLocally) {
+					acceptedSwaps.add(true);
+				}
+			}else {
+				if (optimiseLocally) {
+					acceptedSwaps.add(false);
+				}
 			}
 			totalSwaps++;
 			
-			if (optimiseTemperatureInput.get() && totalSwaps > optimizeDelayInput.get()) {
-				// update maxTemperature
-				double p = (double) successfullSwaps / totalSwaps;
+			if (optimise && totalSwaps > optimizeDelayInput.get()) {
+				double p = 0.0;
+				
+				if (optimiseLocally) {
+					// remove the first entry
+					acceptedSwaps.remove(0);
+					// compute local acceptance probability
+					for (int k = 0; k <acceptedSwaps.size(); k++)
+						if (acceptedSwaps.get(k))
+							p += 1;
+					p /= acceptedSwaps.size();
+				}else {
+					p = (double) successfullSwaps / totalSwaps;
+				}
+				
+				// update maxTemperature				
 				double target = targetAcceptanceProbabilityInput.get();				
 				double delta = (p - target) / totalSwaps;
 	            maxTemperature += delta;
@@ -362,6 +427,7 @@ public class CoupledMCMC extends MCMC {
 	            for (int k = 0; k < n; k++) {
 	            	chains[order[k]].setTemperature(k, getTemperature(k));
 	            }
+	            
 			}
 
 			runTillIteration[i].remove(0);
@@ -378,7 +444,7 @@ public class CoupledMCMC extends MCMC {
 			threads[j] = new HeatedChainThread(j, runj);
 			threads[j].start();
 			
-			System.out.print("\t" + sampleNr + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + maxTemperature + " ");
+			System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + maxTemperature + " ");
 			if (startLogTime>0){			
 	            final long logTime = System.currentTimeMillis();
 	            final int secondsPerMSamples = (int) ((logTime - startLogTime) * 1000.0 / (sampleNr - startSample + 1.0));
@@ -399,26 +465,11 @@ public class CoupledMCMC extends MCMC {
 
 			if (sampleNr % storeEveryInput.get() == 0) {
 		        try {
-		            PrintStream out = new PrintStream(stateFileName + ".new");
-		            out.print(totalSwaps + "," + successfullSwaps + "," + successfullSwaps0 + "," + maxTemperature);
-		            for (int k = 0; k < chains.length; k++) {
-		            	out.print("," + chains[k].getBeta());
-		            }
-		            //out.print(new XMLProducer().toXML(this));
-		            out.close();
-		            File newStateFile = new File(stateFileName + ".new");
-		            File oldStateFile = new File(stateFileName);
-		            oldStateFile.delete();
-		            // newStateFile.renameTo(oldStateFile); -- unstable under windows
-		            Files.move(newStateFile.toPath(), oldStateFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+		        	storeStateToFile(sampleNr);
 		        } catch (Exception e) {
 		            e.printStackTrace();
 		        }
-			}
-
-				
-//			System.err.println(sampleNr + " " + i + " " + j + " succesfull swap fraction: " + (double) successfullSwaps/totalSwaps + " maximal Temperature: " + maxTemperature + " ");
-			
+			}			
 		}
 		// ensure that every chains ran to the end even if it's not participating in the last swap
 		for (int i = 0; i < threads.length; i++){
@@ -429,7 +480,7 @@ public class CoupledMCMC extends MCMC {
 			}
 		}
 		
-
+		System.err.println("#Swap attemps = " + totalSwaps);
 		System.err.println("#Successfull swaps = " + successfullSwaps);
 		System.err.println("#Successfull swaps with cold chain = " + successfullSwaps0);
 		// wait 5 seconds for the log to complete
@@ -438,7 +489,6 @@ public class CoupledMCMC extends MCMC {
 		} catch (InterruptedException e) {
 			// ignore
 		}
-
 	}
 	
 	/* swaps the states of mcmc1 and mcmc2 */
@@ -468,11 +518,10 @@ public class CoupledMCMC extends MCMC {
 		}		
 		
 		// swap the state file Names as well
-		String stateFileName = mcmc1.getStateFileName();
+		String stateFileName1 = mcmc1.getStateFileName();
 		mcmc1.setStateFileName(mcmc2.getStateFileName());
-		mcmc2.setStateFileName(stateFileName);
+		mcmc2.setStateFileName(stateFileName1);		
 	}
-
 
 	void swapOperatorTuning(HeatedChain mcmc1, HeatedChain mcmc2) {
 		List<Operator> operatorList1 = new ArrayList<Operator>();
@@ -494,22 +543,13 @@ public class CoupledMCMC extends MCMC {
 		    operator1.setAcceptedRejected(operator2.get_m_nNrRejected(), operator2.get_m_nNrAccepted(), operator2.get_m_nNrRejectedForCorrection(), operator2.get_m_nNrAcceptedForCorrection());
 		    operator2.setAcceptedRejected(m_nNrAccepted, m_nNrRejected, m_nNrAcceptedForCorrection, m_nNrRejectedForCorrection);
 		    
-//		    System.out.println(operator1.getCoercableParameterValue() + " " + operator2.getCoercableParameterValue());
 		    
 		    double coercableParameterValue = operator1.getCoercableParameterValue();
 		    operator1.setCoercableParameterValue(operator2.getCoercableParameterValue());
 		    operator2.setCoercableParameterValue(coercableParameterValue);
-		    
-//		    System.out.println(operator1.getCoercableParameterValue() + " " + operator2.getCoercableParameterValue());
-//		    System.out.println();
-
-
-			
 			
 		}		
 	}
-
-
 	
 	/* makes the schedule of when to swap which chains */
 	@SuppressWarnings("unchecked")
@@ -520,7 +560,7 @@ public class CoupledMCMC extends MCMC {
 			runTillIteration[i] = new ArrayList<Long>();
 		}
 
-		for (long sampleNr = resampleEvery; sampleNr < chainLength; sampleNr += resampleEvery) {
+		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {
 			int i,j;
 			// resample state
 			i = Randomizer.nextInt(chains.length);
@@ -532,6 +572,35 @@ public class CoupledMCMC extends MCMC {
 			runTillIteration[i].add(sampleNr);
 			runTillIteration[j].add(sampleNr);
 		}
+	}
+	
+	void storeStateToFile(long currentSample) throws FileNotFoundException {
+        PrintStream out;
+		try {
+			out = new PrintStream(stateFileName + ".new");
+			out.print("sample=" + (currentSample + sampleOffset) + "\n");
+	        out.print("totalSwaps=" + totalSwaps + "\n");
+	        out.print("successfullSwaps=" + successfullSwaps + "\n");
+	        out.print("successfullSwaps0=" + successfullSwaps0 + "\n");
+	        out.print("maxTemperature=" + maxTemperature + "\n");
+	        if (optimiseLocally)
+	        	out.print("lastSwaps=" + acceptedSwaps.toString() + "\n");
+	
+	        for (int k = 0; k < chains.length; k++) {
+	        	out.print("beta_chain." + k + "=" + chains[k].getBeta() + "\n");
+	        }
+	        //out.print(new XMLProducer().toXML(this));
+	        out.close();
+	        File newStateFile = new File(stateFileName + ".new");
+	        File oldStateFile = new File(stateFileName);
+	        oldStateFile.delete();
+	        // newStateFile.renameTo(oldStateFile); -- unstable under windows
+	        Files.move(newStateFile.toPath(), oldStateFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 	}
 	
 } // class MCMCMC
