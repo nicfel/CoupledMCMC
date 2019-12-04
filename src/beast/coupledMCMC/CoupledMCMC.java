@@ -39,18 +39,18 @@ import java.util.List;
 @Description("Parallel Metropolis Coupled Markov Chain Monte Carlo")
 public class CoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
-	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
+	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 100);
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
 	
 	// input of the difference between temperature scalers
 	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature difference between the i-th and the i-th+1 chain", 0.1);
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
-	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", true);
+	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
 	
 	// Input on whether the temperature between chains should be optimized
-	public Input<Boolean> GloballyOptimiseTemperatureInput = new Input<>("globallyOptimiseTemperature","if specified, the temperature is optimised globally after n swaps", false);
-	public Input<Boolean> LocallyOptimiseTemperatureInput = new Input<>("locallyOptimiseTemperature","if true, the temperature is adapted locally after n swaps", false);
-	public Input<Integer> optimizeDelayInput = new Input<>("optimizeDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
+	public Input<String> optimiseInput = new Input<>("optimise","should either be \"false\", \"true\", \"log\", \"sqrt\". default is true", "true");
+	
+	public Input<Integer> optimiseDelayInput = new Input<>("optimiseDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
 	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.234);
 	
 	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
@@ -59,8 +59,9 @@ public class CoupledMCMC extends MCMC {
 	int resampleEvery;	
 	double maxTemperature;
 	
-	boolean optimiseLocally = false;
-	boolean optimise = true;
+	private enum Optimise {False, True, Log, Sqrt}
+	
+	private Optimise optimise;
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	HeatedChain [] chains;
@@ -96,22 +97,33 @@ public class CoupledMCMC extends MCMC {
 		
 		resampleEvery = resampleEveryInput.get();				
 		
-		if (maxTemperatureInput.get()!=null){
-			System.err.println("calculating delta T from max Temperature and number of chains");
-			maxTemperature = maxTemperatureInput.get();
-		}else{
-			maxTemperature = deltaTemperatureInput.get()*(nrOfChainsInput.get()-1);
-		}
+		maxTemperature = deltaTemperatureInput.get()*(nrOfChainsInput.get()-1);
+
 		
 		acceptedSwaps = new ArrayList<>();		
 		
-		
-		if (GloballyOptimiseTemperatureInput.get() && LocallyOptimiseTemperatureInput.get())
-			throw new IllegalArgumentException("Temperture is optimisation is specified to be both, global and local. Only one can be true");			
-		else if (LocallyOptimiseTemperatureInput.get())
-			optimiseLocally = true;
-		else
-			optimise = false;
+		// check how optimisation should be performed
+		if (optimiseInput.get()==null) {
+			optimise = Optimise.True;
+		}else {
+			String input = optimiseInput.get().replace("\\s+", "");
+			switch (input) {
+				case "false":
+					optimise = Optimise.False;	
+					break;
+				case "true":
+					optimise = Optimise.True;
+					break;
+				case "log":
+					optimise = Optimise.Log;
+					break;
+				case "sqrt":
+					optimise = Optimise.Sqrt;
+					break;
+				default:
+					throw new IllegalArgumentException("optimise input should either be \"false\", \"true\", \"log\", \"sqrt\" or not specified at all, which is qual to \"true\"");
+			}
+		}
 		
 	} // initAndValidate
 	
@@ -125,8 +137,7 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("deltaTemperature=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("maxTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("GloballyOptimiseTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("locallyOptimiseTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("optimise=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("logHeatedChains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("optimizeDelay=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
@@ -266,15 +277,6 @@ public class CoupledMCMC extends MCMC {
 				e.printStackTrace();
 			}
 		}
-		
-//		for (int i = 0; i < chains.length; i++) {
-//			System.out.println(chains[i].getBeta());
-//		}
-//		for (int i = 0; i < chains.length; i++) {
-//			System.out.println(chains[i].getUnscaledCurrentLogLikelihood());
-//		}
-//
-//		System.exit(0);
 
 		
 		if (preScheduleInput.get()){
@@ -284,8 +286,6 @@ public class CoupledMCMC extends MCMC {
 	} // run
 	
 	private void runPrescheduled(){
-		
-
 		// run each thread until it's next swapping time
 		// start threads with individual chains here.
 		threads = new Thread[chains.length];
@@ -311,8 +311,7 @@ public class CoupledMCMC extends MCMC {
 		System.out.print("\t" + (startSample + sampleOffset) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + maxTemperature + "\n");
 
 		
-		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {
-			
+		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {	
 			
 			// get the chains to swap
 			int i=-1, j=-1;
@@ -373,34 +372,19 @@ public class CoupledMCMC extends MCMC {
 				// swap Operator tuning
 				swapOperatorTuning(chains[i], chains[j]);				
 				
-				if (optimiseLocally) {
+				if (optimise!=Optimise.False) {
 					acceptedSwaps.add(true);
 				}
 			}else {
-				if (optimiseLocally) {
+				if (optimise!=Optimise.False) {
 					acceptedSwaps.add(false);
 				}
 			}
 			totalSwaps++;
 			
-			if (optimise && totalSwaps > optimizeDelayInput.get()) {
-				double p = 0.0;
+			if (optimise!=Optimise.False && totalSwaps > optimiseDelayInput.get()) {
+				double delta = getDelta();			
 				
-				if (optimiseLocally) {
-					// remove the first entry
-					acceptedSwaps.remove(0);
-					// compute local acceptance probability
-					for (int k = 0; k <acceptedSwaps.size(); k++)
-						if (acceptedSwaps.get(k))
-							p += 1;
-					p /= acceptedSwaps.size();
-				}else {
-					p = (double) successfullSwaps / totalSwaps;
-				}
-				
-				// update maxTemperature				
-				double target = targetAcceptanceProbabilityInput.get();				
-				double delta = (p - target) / totalSwaps;
 	            maxTemperature += delta;
 	            
 	            // boundary case checks
@@ -583,8 +567,7 @@ public class CoupledMCMC extends MCMC {
 	        out.print("successfullSwaps=" + successfullSwaps + "\n");
 	        out.print("successfullSwaps0=" + successfullSwaps0 + "\n");
 	        out.print("maxTemperature=" + maxTemperature + "\n");
-	        if (optimiseLocally)
-	        	out.print("lastSwaps=" + acceptedSwaps.toString() + "\n");
+        	out.print("lastSwaps=" + acceptedSwaps.toString() + "\n");
 	
 	        for (int k = 0; k < chains.length; k++) {
 	        	out.print("beta_chain." + k + "=" + chains[k].getBeta() + "\n");
@@ -601,6 +584,55 @@ public class CoupledMCMC extends MCMC {
 			e.printStackTrace();
 		}
 
+	}
+	
+	double getDelta() {
+		double target = targetAcceptanceProbabilityInput.get();	
+
+		double p = (double) successfullSwaps / totalSwaps;
+		double p_local = 0.0;
+		
+		// compute the local acceptance probability
+		acceptedSwaps.remove(0);
+		// compute local acceptance probability
+		for (int k = acceptedSwaps.size()/10; k < acceptedSwaps.size(); k++)
+			if (acceptedSwaps.get(k))
+				p_local += 1;
+		p_local /= acceptedSwaps.size();
+		
+		
+		
+		// check that the local and global acceptance probability are at the same relative position
+		// compared to the target acceptance probability
+		if ((p<target) && (p_local>target))
+			return 0.0;
+		else if ((p>target) && (p_local<target))
+			return 0.0;		
+		
+
+		double swapsTransformed;
+		
+		if (optimise==Optimise.Log) {
+			swapsTransformed = Math.log(totalSwaps + 1.0);
+		}else if (optimise==Optimise.Sqrt) {
+			swapsTransformed = Math.sqrt(totalSwaps);			
+		}else {
+			swapsTransformed = (double) totalSwaps;		
+		}
+				
+		// update maxTemperature		
+		double delta = (p - target) / swapsTransformed;
+		
+		// prevent too large adaptions that lead to overshooting
+		double maxstep = 1.0/(optimiseDelayInput.get()*10.0);
+		
+		if (delta>maxstep)
+			delta = maxstep;
+		if (delta<-maxstep)
+			delta = -maxstep;
+		
+		
+		return delta;
 	}
 	
 } // class MCMCMC
