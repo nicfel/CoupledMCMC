@@ -29,17 +29,24 @@ public class MCMC2CoupledMCMC extends Runnable {
 			new XMLFile("examples/normalTest-1XXX.xml"), Validate.REQUIRED);
 	public Input<OutFile> outputInput = new Input<>("output", "where to save the file", new OutFile("beast.xml"));
 	
-	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", "number of chains to run in parallel (default 2)", 2);
-	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 10000);
+	
+	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
+	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 100);
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
 	
 	// input of the difference between temperature scalers
-	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature", "temperature difference between the i-th and the i-th+1 chain", 0.1);
-	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature", "temperature scaler, the higher this value, the hotter the chains");	
-	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains", "if true, log files for heated chains are also printed", true);
-
-	public Input<Boolean> preScheduleInput = new Input<>("preSchedule", "if true, how long chains are run for is scheduled at the beginning", true);
+	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature difference between the i-th and the i-th+1 chain", 0.1);
+	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","maximal temperature of the hottest chain");	
+//	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
 	
+	// Input on whether the temperature between chains should be optimized
+	public Input<Boolean> optimiseInput = new Input<>("optimise","if true, the temperature is automatically optimised to reach a target acceptance probability", true);
+	
+	public Input<Integer> optimiseDelayInput = new Input<>("optimiseDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
+	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.234);
+	
+//	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
+
 	
 	@Override
 	public void initAndValidate() {
@@ -61,9 +68,10 @@ public class MCMC2CoupledMCMC extends Runnable {
 			
 			mc3.deltaTemperatureInput.setValue(deltaTemperatureInput.get(), mc3);
 			mc3.maxTemperatureInput.setValue(maxTemperatureInput.get(), mc3);
-			mc3.logHeatedChainsInput.setValue(logHeatedChainsInput.get(), mc3);
+			mc3.optimiseInput.setValue(optimiseInput.get(), mc3);
 			
-			mc3.preScheduleInput.setValue(preScheduleInput.get(), mc3);
+			mc3.logHeatedChainsInput.setValue(false, mc3);
+			mc3.preScheduleInput.setValue(true, mc3);
 
 			// mcmc options
 			mc3.posteriorInput.setValue(mcmc.posteriorInput.get(), mc3);
