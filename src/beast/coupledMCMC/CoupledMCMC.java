@@ -44,11 +44,11 @@ public class CoupledMCMC extends MCMC {
 	
 	// input of the difference between temperature scalers
 	public Input<Double> deltaTemperatureInput = new Input<>("deltaTemperature","temperature difference between the i-th and the i-th+1 chain", 0.1);
-	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","temperature scaler, the higher this value, the hotter the chains");	
+	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","maximal temperature of the hottest chain");	
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
 	
 	// Input on whether the temperature between chains should be optimized
-	public Input<String> optimiseInput = new Input<>("optimise","should either be \"false\", \"true\", \"log\", \"sqrt\". default is true", "true");
+	public Input<Boolean> optimiseInput = new Input<>("optimise","if true, the temperature is automatically optimised to reach a target acceptance probability", true);
 	
 	public Input<Integer> optimiseDelayInput = new Input<>("optimiseDelay","after this many epochs/swaps, the temperature will be optimized (if optimising is set to true)", 100);
 	public Input<Double> targetAcceptanceProbabilityInput = new Input<>("target", "target acceptance probability of swaps", 0.234);
@@ -59,9 +59,9 @@ public class CoupledMCMC extends MCMC {
 	int resampleEvery;	
 	double maxTemperature;
 	
-	private enum Optimise {False, True, Log, Sqrt}
+//	private enum Optimise {False, True, Log, Sqrt}
 	
-	private Optimise optimise;
+	private boolean optimise;
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	HeatedChain [] chains;
@@ -102,28 +102,31 @@ public class CoupledMCMC extends MCMC {
 		
 		acceptedSwaps = new ArrayList<>();		
 		
-		// check how optimisation should be performed
-		if (optimiseInput.get()==null) {
-			optimise = Optimise.True;
-		}else {
-			String input = optimiseInput.get().replace("\\s+", "");
-			switch (input) {
-				case "false":
-					optimise = Optimise.False;	
-					break;
-				case "true":
-					optimise = Optimise.True;
-					break;
-				case "log":
-					optimise = Optimise.Log;
-					break;
-				case "sqrt":
-					optimise = Optimise.Sqrt;
-					break;
-				default:
-					throw new IllegalArgumentException("optimise input should either be \"false\", \"true\", \"log\", \"sqrt\" or not specified at all, which is qual to \"true\"");
-			}
-		}
+		
+		optimise = optimiseInput.get();
+		
+//		// check how optimisation should be performed
+//		if (optimiseInput.get()==null) {
+//			optimise = Optimise.True;
+//		}else {
+//			String input = optimiseInput.get().replace("\\s+", "");
+//			switch (input) {
+//				case "false":
+//					optimise = Optimise.False;	
+//					break;
+//				case "true":
+//					optimise = Optimise.True;
+//					break;
+//				case "log":
+//					optimise = Optimise.Log;
+//					break;
+//				case "sqrt":
+//					optimise = Optimise.Sqrt;
+//					break;
+//				default:
+//					throw new IllegalArgumentException("optimise input should either be \"false\", \"true\", \"log\", \"sqrt\" or not specified at all, which is qual to \"true\"");
+//			}
+//		}
 		
 	} // initAndValidate
 	
@@ -372,17 +375,17 @@ public class CoupledMCMC extends MCMC {
 				// swap Operator tuning
 				swapOperatorTuning(chains[i], chains[j]);				
 				
-				if (optimise!=Optimise.False) {
+				if (optimise) {
 					acceptedSwaps.add(true);
 				}
 			}else {
-				if (optimise!=Optimise.False) {
+				if (optimise) {
 					acceptedSwaps.add(false);
 				}
 			}
 			totalSwaps++;
 			
-			if (optimise!=Optimise.False && totalSwaps > optimiseDelayInput.get()) {
+			if (optimise && totalSwaps > optimiseDelayInput.get()) {
 				double delta = getDelta();			
 				
 	            maxTemperature += delta;
@@ -612,13 +615,13 @@ public class CoupledMCMC extends MCMC {
 
 		double swapsTransformed;
 		
-		if (optimise==Optimise.Log) {
-			swapsTransformed = Math.log(totalSwaps + 1.0);
-		}else if (optimise==Optimise.Sqrt) {
-			swapsTransformed = Math.sqrt(totalSwaps);			
-		}else {
+//		if (optimise==Optimise.Log) {
+//			swapsTransformed = Math.log(totalSwaps + 1.0);
+//		}else if (optimise==Optimise.Sqrt) {
+//			swapsTransformed = Math.sqrt(totalSwaps);			
+//		}else {
 			swapsTransformed = (double) totalSwaps;		
-		}
+//		}
 				
 		// update maxTemperature		
 		double delta = (p - target) / swapsTransformed;

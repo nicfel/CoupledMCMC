@@ -339,7 +339,7 @@
 
 <!-- framework for main model -->
 
-<run id="mcmc" spec="beast.coupledMCMC.CoupledMCMC" logHeatedChains="true" maxTemperature="0.1" resampleEvery="1000" chainLength="10000000" chains="2">
+<run id="mcmc" spec="beast.coupledMCMC.CoupledMCMC" logHeatedChains="true" deltaTemperature="0.1" target="0.234" optimise="true" resampleEvery="1000" chainLength="10000000" chains="2">
         <state storeEvery='5000' id='state'>
         </state>
 
