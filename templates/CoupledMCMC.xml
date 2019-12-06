@@ -156,7 +156,7 @@
         />
 		<mergepoint id='aux-operators-panels'/>
 
-		<panel spec='BeautiPanelConfig' panelname="Coupled MCMC" tiptext="Coupled MCMC parameters"
+		<panel spec='BeautiPanelConfig' panelname="Parallel tempering" tiptext="Setup of the adative parallel tempering parameters"
             path=''
             hasPartitions="none" icon='9.png.x' forceExpansion='TRUE'
         />

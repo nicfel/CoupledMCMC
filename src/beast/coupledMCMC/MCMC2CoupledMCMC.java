@@ -92,6 +92,7 @@ public class MCMC2CoupledMCMC extends Runnable {
 	        
 			
 		} catch (SAXException | IOException | ParserConfigurationException | XMLParserException e) {
+			System.out.println(e);
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
