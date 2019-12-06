@@ -57,7 +57,7 @@ public class CoupledMCMC extends MCMC {
 	
 	// nr of samples between re-arranging states
 	int resampleEvery;	
-	double maxTemperature;
+	double temperatureHottestChain;
 	
 //	private enum Optimise {False, True, Log, Sqrt}
 	
@@ -97,7 +97,7 @@ public class CoupledMCMC extends MCMC {
 		
 		resampleEvery = resampleEveryInput.get();				
 		
-		maxTemperature = deltaTemperatureInput.get()*(nrOfChainsInput.get()-1);
+		temperatureHottestChain = deltaTemperatureInput.get()*(nrOfChainsInput.get()-1);
 
 		
 		acceptedSwaps = new ArrayList<>();		
@@ -222,7 +222,7 @@ public class CoupledMCMC extends MCMC {
 	}
 	
 	private double getTemperature(int i){
-		return i*maxTemperature/(nrOfChainsInput.get()-1);
+		return i*temperatureHottestChain/(nrOfChainsInput.get()-1);
 	}
 	
 	class HeatedChainThread extends Thread {
@@ -261,8 +261,8 @@ public class CoupledMCMC extends MCMC {
 						successfullSwaps = Integer.parseInt(Spltstr[1]);
 					else if (Spltstr[0].contentEquals("successfullSwaps0"))
 						successfullSwaps0 = Integer.parseInt(Spltstr[1]);
-					else if (Spltstr[0].contentEquals("maxTemperature"))
-						maxTemperature = Double.parseDouble(Spltstr[1]);
+					else if (Spltstr[0].contentEquals("temperatureHottestChain"))
+						temperatureHottestChain = Double.parseDouble(Spltstr[1]);
 					else if (Spltstr[0].contentEquals("lastSwaps")) {
 						String[] tmp = Spltstr[1].replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
 						acceptedSwaps = new ArrayList<>();
@@ -274,7 +274,7 @@ public class CoupledMCMC extends MCMC {
 				Log.warning("Restoring: totalSwaps=" + totalSwaps + 
 						" successfullSwaps=" + successfullSwaps +
 						" successfullSwaps0=" + successfullSwaps0 +
-						" maxTemperature=" + maxTemperature);
+						" temperatureHottestChain=" + temperatureHottestChain);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -311,7 +311,7 @@ public class CoupledMCMC extends MCMC {
 		double currProb = ((double) successfullSwaps/totalSwaps);
 		if (Double.isNaN(currProb))
 			currProb = 0.0;
-		System.out.print("\t" + (startSample + sampleOffset) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + maxTemperature + "\n");
+		System.out.print("\t" + (startSample + sampleOffset) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + temperatureHottestChain + "\n");
 
 		
 		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {	
@@ -388,13 +388,13 @@ public class CoupledMCMC extends MCMC {
 			if (optimise && totalSwaps > optimiseDelayInput.get()) {
 				double delta = getDelta();			
 				
-	            maxTemperature += delta;
+				temperatureHottestChain += delta;
 	            
 	            // boundary case checks
 	    		if (maxTemperatureInput.get() != null){
-	    			maxTemperature = Math.max(maxTemperature, maxTemperatureInput.get()); 
-	            } else if (maxTemperature < 0) {
-	            	maxTemperature = 0;
+	    			temperatureHottestChain = Math.max(temperatureHottestChain, maxTemperatureInput.get()); 
+	            } else if (temperatureHottestChain < 0) {
+	            	temperatureHottestChain = 0;
 	            }
 	            
 	            // figure out order of chains
@@ -431,7 +431,7 @@ public class CoupledMCMC extends MCMC {
 			threads[j] = new HeatedChainThread(j, runj);
 			threads[j].start();
 			
-			System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + maxTemperature + " ");
+			System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + temperatureHottestChain + " ");
 			if (startLogTime>0){			
 	            final long logTime = System.currentTimeMillis();
 	            final int secondsPerMSamples = (int) ((logTime - startLogTime) * 1000.0 / (sampleNr - startSample + 1.0));
@@ -569,7 +569,7 @@ public class CoupledMCMC extends MCMC {
 	        out.print("totalSwaps=" + totalSwaps + "\n");
 	        out.print("successfullSwaps=" + successfullSwaps + "\n");
 	        out.print("successfullSwaps0=" + successfullSwaps0 + "\n");
-	        out.print("maxTemperature=" + maxTemperature + "\n");
+	        out.print("temperatureHottestChain=" + temperatureHottestChain + "\n");
         	out.print("lastSwaps=" + acceptedSwaps.toString() + "\n");
 	
 	        for (int k = 0; k < chains.length; k++) {
