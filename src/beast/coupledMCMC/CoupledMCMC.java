@@ -57,18 +57,20 @@ public class CoupledMCMC extends MCMC {
 	
 	// nr of samples between re-arranging states
 	int resampleEvery;	
-	double deltaTemperature;
 	
-//	private enum Optimise {False, True, Log, Sqrt}
+	double deltaTemperature;
 	
 	private boolean optimise;
 	
 	/** plugins representing MCMC with model, loggers, etc **/
 	HeatedChain [] chains;
+	
 	/** threads for running MCMC chains **/
 	Thread [] threads;
+	
 	/** keep track of time taken between logs to estimate speed **/
     long startLogTime;
+    
     /** keeps track of the last n swaps and if they were accepted or not **/
     List<Boolean> acceptedSwaps;
 
@@ -81,8 +83,6 @@ public class CoupledMCMC extends MCMC {
 	int successfullSwaps = 0, successfullSwaps0 = 0;
 	
 	long sampleOffset = 0;
-
-
 
 	@Override
 	public void initAndValidate() {
@@ -98,10 +98,8 @@ public class CoupledMCMC extends MCMC {
 		resampleEvery = resampleEveryInput.get();				
 		
 		deltaTemperature = deltaTemperatureInput.get();
-
 		
-		acceptedSwaps = new ArrayList<>();		
-		
+		acceptedSwaps = new ArrayList<>();				
 		
 		optimise = optimiseInput.get();
 		
@@ -341,12 +339,15 @@ public class CoupledMCMC extends MCMC {
 				e.printStackTrace();
 			}
 			
-
-					
-					
-			if (chains[i].getBeta() <  chains[j].getBeta()) {
+			// ensure that i is the colder chain		
+//			if (chains[i].getBeta() <  chains[j].getBeta()) {
+//				int tmp = i; i = j; j = tmp;
+//			}
+			if (chains[i].getChainNr() > chains[j].getChainNr()) {
 				int tmp = i; i = j; j = tmp;
 			}
+			
+			
 		
 			
 			double p1before = chains[i].getCurrentLogLikelihood();
@@ -369,11 +370,19 @@ public class CoupledMCMC extends MCMC {
 				chains[i].setBeta(chains[j].getBeta());						
 				chains[j].setBeta(beta);
 				
+				// swap chain numbers
+				int chainNr = chains[i].getChainNr();
+				chains[i].setChainNr(chains[j].getChainNr());
+				chains[j].setChainNr(chainNr);
+				
 				// swap loggers and the state file names
 				swapLoggers(chains[i], chains[j]);				
 				
 				// swap Operator tuning
-				swapOperatorTuning(chains[i], chains[j]);				
+				swapOperatorTuning(chains[i], chains[j]);		
+				
+				if (chains[j].getBeta() < chains[i].getBeta())
+					throw new IllegalArgumentException("error in temperatures of chains");
 				
 				if (optimise) {
 					acceptedSwaps.add(true);
@@ -412,7 +421,7 @@ public class CoupledMCMC extends MCMC {
 	            
 	            // set new temperatures asynchronously, in same order as before
 	            for (int k = 0; k < n; k++) {
-	            	chains[order[k]].setTemperature(k, getTemperature(k));
+	            	chains[k].setTemperature(0, getTemperature(chains[k].getChainNr()));
 	            }
 	            
 			}
@@ -503,7 +512,7 @@ public class CoupledMCMC extends MCMC {
 				}					
 			}			
 		}		
-		
+				
 		// swap the state file Names as well
 		String stateFileName1 = mcmc1.getStateFileName();
 		mcmc1.setStateFileName(mcmc2.getStateFileName());
@@ -638,7 +647,7 @@ public class CoupledMCMC extends MCMC {
 		return delta;
 	}
 	
-} // class MCMCMC
+}
 
 
 
