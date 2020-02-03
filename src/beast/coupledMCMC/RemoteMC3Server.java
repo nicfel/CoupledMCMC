@@ -2,6 +2,10 @@ package beast.coupledMCMC;
 
 import java.net.*;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
+
 import beast.app.beauti.OperatorListInputEditor;
 import beast.app.util.Application;
 import beast.core.Description;
@@ -67,6 +71,29 @@ public class RemoteMC3Server extends Runnable {
 						// make sure it is a HeatedChain object
 						if (o instanceof HeatedChain) {
 							mc3 = (HeatedChain) o;
+							
+							// remove all screen loggers
+							for (int j = mc3.coupledLoggersInput.get().size()-1; j >=0 ; j--){
+								if (mc3.coupledLoggersInput.get().get(j).getID().contentEquals("screenlog")){
+									mc3.coupledLoggersInput.get().remove(j);
+								}
+							}
+							
+							// remove all loggers of heated chains if they are not logged
+							for (int j = 0; j < mc3.coupledLoggersInput.get().size(); j++) {
+									mc3.coupledLoggersInput.get().get(j).setSuppressLogging(true);
+							}
+							// initialize each chain individually
+							// mc3.setResampleEvery(resampleEvery);
+							// mc3.setTemperature(i, getTemperature(i));
+							
+							// needed to avoid error of putting the working dir twice
+							String[] splittedFileName = stateFileName.split("/");
+							
+							// mc3.setStateFile(
+							//		splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);
+							// mc3.setChainNr(i);
+							out.writeUTF("mc3 created OK");
 						} else {
 							out.writeUTF("Expected MCMC wth HeatedChain as main object");
 						}
@@ -77,9 +104,20 @@ public class RemoteMC3Server extends Runnable {
 					} else if (line.startsWith("geto")) {
 						line = getOperatorParameters();
 						out.writeUTF(line);
+					} else if (line.startsWith("getu")) {						
+						out.writeUTF(mc3.getUnscaledCurrentLogLikelihood() + "");
 					} else if (line.startsWith("seto")) {
 						setOperatorParameters(line);
 						out.writeUTF("operators updates");
+					} else if (line.startsWith("setr")) {
+						int resampleEvery = Integer.parseInt(line.split(",")[1]);
+						mc3.setResampleEvery(resampleEvery);
+						try {
+							mc3.run();
+						} catch (SAXException | ParserConfigurationException e) {
+							e.printStackTrace();
+						}
+						out.writeUTF("resampleEvery set to " + resampleEvery);
 					} else if (line.startsWith("runtill")) {
 						int i = Integer.parseInt(line.split(",")[1]);
 						try {
