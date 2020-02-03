@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +39,7 @@ import java.util.List;
 				DOI="10.1093/bioinformatics/btg427")
 		}
 )		
-@Description("Parallel Metropolis Coupled Markov Chain Monte Carlo")
+@Description("Distributed Parallel Metropolis Coupled Markov Chain Monte Carlo")
 public class RemoteCoupledMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 100);
@@ -58,7 +60,9 @@ public class RemoteCoupledMCMC extends MCMC {
 	
 
 	public Input<String> hostsInput = new Input<>("hosts","comma separated list of hosts -- should be equal to number of chains", Validate.REQUIRED);
-	public Input<String> portsInput = new Input<>("ports","comma separated list of ports on hosts. If fewer ports than hosts are specified, it cycles through the list (so you can specify only 1 port, which is 5000 by default)", "5000");
+	public Input<String> portsInput = new Input<>("ports","comma separated list of ports on hosts. If fewer ports than hosts are specified, it cycles through the list (so you can specify only 1 port, which is 5001 by default)", "5001");
+
+	public Input<Integer> loggerportInput = new Input<>("loggerport", "port where the logger service listens -- should differ from ports", 5000);
 
 	
 	// nr of samples between re-arranging states
@@ -89,6 +93,7 @@ public class RemoteCoupledMCMC extends MCMC {
 	int successfullSwaps = 0, successfullSwaps0 = 0;
 	
 	long sampleOffset = 0;
+	RemoteLoggerServer remoteLoggerServer;
 
 	@Override
 	public void initAndValidate() {
@@ -108,6 +113,17 @@ public class RemoteCoupledMCMC extends MCMC {
 		acceptedSwaps = new ArrayList<>();				
 		
 		optimise = optimiseInput.get();
+		
+		if (logHeatedChainsInput.get()) {
+			throw new IllegalArgumentException("logHeatedChains should be set to false -- it only works with non-remote CoupledMCMC");
+		}
+		
+		try {
+			remoteLoggerServer = new RemoteLoggerServer(loggerportInput.get());
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException("Cannot create logger service on port " + loggerportInput.get());
+		}
 		
 //		// check how optimisation should be performed
 //		if (optimiseInput.get()==null) {
@@ -138,7 +154,17 @@ public class RemoteCoupledMCMC extends MCMC {
 		XMLProducer p = new XMLProducer();
 		String sXML = p.toXML(this, new ArrayList<>());
 		
+		String loggerHost = "localhost";
+		try {
+			loggerHost = InetAddress.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e1) {
+			e1.printStackTrace();
+		}
+		
 		// removes coupled MCMC parts of the xml		
+		sXML = sXML.replaceAll("hosts=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("ports=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("loggerport=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
@@ -152,7 +178,7 @@ public class RemoteCoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("spec=\"Logger\"", "");
-		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
+		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.RemoteCoupledLogger\" host=\"" + loggerHost + "\" port=\"" + loggerportInput.get() + "\" ");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");
 		
 		// check if the loggers have a same issue

@@ -50,7 +50,10 @@ public class RemoteHeatedChain {
 
     			// sends output to the socket 
     			out = new DataOutputStream(socket.getOutputStream()); 
-    			sin = new DataInputStream(socket.getInputStream()); 
+    			sin = new DataInputStream(socket.getInputStream());
+    			out.writeUTF(xml);
+    			String response = sin.readUTF();
+    			System.err.println(response);
     		} 
     		catch(UnknownHostException u) 
     		{ 

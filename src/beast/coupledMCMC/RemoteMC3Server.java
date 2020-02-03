@@ -6,7 +6,6 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.xml.sax.SAXException;
 
-import beast.app.beauti.OperatorListInputEditor;
 import beast.app.util.Application;
 import beast.core.Description;
 import beast.core.Input;
@@ -43,7 +42,7 @@ public class RemoteMC3Server extends Runnable {
 			server = new ServerSocket(portInput.get());
 			System.out.println("Server started");
 
-			System.out.println("Waiting for a client ...");
+			System.out.println("Waiting for a client at " + server + " ...");
 
 			socket = server.accept();
 			System.out.println("Client accepted");
@@ -88,7 +87,7 @@ public class RemoteMC3Server extends Runnable {
 							// mc3.setTemperature(i, getTemperature(i));
 							
 							// needed to avoid error of putting the working dir twice
-							String[] splittedFileName = stateFileName.split("/");
+							// String[] splittedFileName = stateFileName.split("/");
 							
 							// mc3.setStateFile(
 							//		splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);

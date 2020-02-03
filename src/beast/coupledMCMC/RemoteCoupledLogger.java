@@ -15,7 +15,7 @@ import beast.core.Input.Validate;
 import beast.core.util.Log;
 
 @Description("Logger for CoupledMCMC that logs via a RemoteLoggerService")
-class RemoteCoupledLogger extends CoupledLogger {
+public class RemoteCoupledLogger extends CoupledLogger {
 	final public Input<String> hostInput = new Input<>("host", "URL of MC3 logger service", Validate.REQUIRED);
 	final public Input<Integer> portInput = new Input<>("port", "port of MC3 logger service", Validate.REQUIRED);
 
