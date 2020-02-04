@@ -119,7 +119,7 @@ public class RemoteCoupledMCMC extends MCMC {
 		}
 		
 		try {
-			remoteLoggerServer = new RemoteLoggerServer(loggerportInput.get());
+			remoteLoggerServer = new RemoteLoggerServer(loggerportInput.get(), restoreFromFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException("Cannot create logger service on port " + loggerportInput.get());
@@ -208,7 +208,7 @@ public class RemoteCoupledMCMC extends MCMC {
 			}
 			
 			try {
-				chains[i] = new RemoteHeatedChain(sXML2, hosts[i], Integer.parseInt(ports[i % ports.length]));
+				chains[i] = new RemoteHeatedChain(sXML2, hosts[i], Integer.parseInt(ports[i % ports.length]), restoreFromFile);
 				
 	
 //				// remove all screen loggers
@@ -230,10 +230,9 @@ public class RemoteCoupledMCMC extends MCMC {
 				chains[i].setResampleEvery(resampleEvery);
 							
 				// needed to avoid error of putting the working dir twice
-//				String[] splittedFileName = stateFileName.split("/");
+				String[] splittedFileName = stateFileName.split("/");
 				
-//				chains[i].setStateFile(
-//						splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);
+				chains[i].setStateFile(splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);
 //				chains[i].setChainNr(i);
 //				chains[i].run();
 

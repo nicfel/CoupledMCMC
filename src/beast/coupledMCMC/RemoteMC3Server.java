@@ -71,8 +71,7 @@ public class RemoteMC3Server extends Runnable {
 						}
 						// make sure it is a HeatedChain object
 						if (o instanceof HeatedChain) {
-							mc3 = (HeatedChain) o;
-							
+							mc3 = (HeatedChain) o;							
 							// remove all screen loggers
 							for (int j = mc3.coupledLoggersInput.get().size()-1; j >=0 ; j--){
 								if (mc3.coupledLoggersInput.get().get(j).getID().contentEquals("screenlog")){
@@ -89,15 +88,15 @@ public class RemoteMC3Server extends Runnable {
 							// mc3.setTemperature(i, getTemperature(i));
 							
 							// needed to avoid error of putting the working dir twice
-							// String[] splittedFileName = stateFileName.split("/");
-							
-							// mc3.setStateFile(
-							//		splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);
 							// mc3.setChainNr(i);
 							out.writeUTF("mc3 created OK");
 						} else {
 							out.writeUTF("Expected MCMC wth HeatedChain as main object");
 						}
+					} else if (line.startsWith("sets")) {
+						String stateFileName = line.split(",")[1];
+						mc3.setStateFile(stateFileName, restoreFromFile);
+						out.writeUTF("state file set to " + mc3.getStateFileName());
 					} else if (line.startsWith("setb")) {
 						double beta = Double.parseDouble(line.split(",")[1]);
 						mc3.setBeta(beta);
@@ -135,14 +134,16 @@ public class RemoteMC3Server extends Runnable {
 							logger.setSuppressLogging(i != 0);
 						}
 						out.writeUTF("chain nr set to " + i);						
+					} else if (line.startsWith("resume")) {
+						String resume = line.split("=")[1];
+						restoreFromFile = Boolean.parseBoolean(resume);
 					}
 					
 					Log.debug.println(line);
 					Log.debug("Message received " + line);
-				} catch (EOFException e) {
+				} catch (IOException e) {
+					System.out.println(e);
 					break;
-				} catch (IOException i) {
-					System.out.println(i);
 				}
 			}
 			System.out.println("Closing connection");

@@ -9,6 +9,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 
+import beast.core.BEASTObject;
 import beast.core.Description;
 import beast.core.Input;
 import beast.core.Input.Validate;
@@ -52,6 +53,18 @@ public class RemoteCoupledLogger extends CoupledLogger {
 	@Override
 	public void init() throws IOException {
 		if (fileNameInput.get() != null) {
+			String fileName = fileNameInput.get();
+            if (fileName.contains("$(tree)")) {
+            	String treeName = "tree";
+            	for (final BEASTObject logger : loggersInput.get()) {
+        			final String id = ((BEASTObject) logger).getID();
+        			if (id.indexOf(".t:") > 0) {
+        				treeName = id.substring(id.indexOf(".t:") + 3); 
+        			}
+            	}
+                fileName = fileName.replace("$(tree)", treeName);
+                fileNameInput.setValue(fileName, this);
+            }
 			out.writeUTF(fileNameInput.get());
 		} else {
 			out.writeUTF("null");
@@ -80,7 +93,9 @@ public class RemoteCoupledLogger extends CoupledLogger {
 				m_out = new PrintStream(baos, true, utf8);
 				super.log(sampleNr);
 				String data = baos.toString(utf8);
-				out.writeUTF(data);
+				if (data.length() > 0) {
+					out.writeUTF(data);
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -96,7 +111,9 @@ public class RemoteCoupledLogger extends CoupledLogger {
 				m_out = new PrintStream(baos, true, utf8);
 	    		super.close();
 	    		String data = baos.toString(utf8);
-				out.writeUTF(data);
+				if (data.length() > 0) {
+					out.writeUTF(data);
+				}
 				out.writeUTF("close");
 			} catch (IOException e) {
 				e.printStackTrace();

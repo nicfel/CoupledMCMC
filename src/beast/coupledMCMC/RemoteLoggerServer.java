@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
+import java.util.Set;
 
 import beast.core.util.Log;
 
@@ -16,11 +18,15 @@ public class RemoteLoggerServer {
 	// server is listening on port
 	private ServerSocket ss;
 	private Thread serverThread;
+	Set<String> files;
+	boolean restoreFromFile;
 
-	public RemoteLoggerServer(int port) throws IOException {
+	public RemoteLoggerServer(int port, boolean restoreFromFile) throws IOException {
+		this.restoreFromFile = restoreFromFile;
 		// server is listening on port
 		ss = new ServerSocket(port);
-
+		files = new HashSet<>();
+		
 		serverThread = new Thread() {
 			boolean running = true;
 
@@ -81,19 +87,21 @@ public class RemoteLoggerServer {
 
 		@Override
 		public void run() {
-			String received;
 
 			// first message indicates the file name
 			try {
-				received = dis.readUTF();
-				Log.warning("Creating file at " + received);
-				if (received.equals("null")) {
+				String file = dis.readUTF();
+				if (file.equals("null")) {
 					out = System.out;
 				} else {
-					if (new File(received).exists()) {
-						out = new PrintStream(new FileOutputStream(received, true));
+					// TODO: deal with resuming
+					if (new File(file).exists() || files.contains(file)) {
+						Log.warning("Appending file " + file);
+						out = new PrintStream(new FileOutputStream(file, true));
 					} else {
-						out = new PrintStream(received);
+						Log.warning("Writing file " + file);
+						out = new PrintStream(file);
+						files.add(file);
 					}
 				}
 			} catch (IOException e1) {
@@ -101,6 +109,7 @@ public class RemoteLoggerServer {
 				e1.printStackTrace();
 			}
 
+			String received;
 			while (true) {
 				try {
 
@@ -110,7 +119,7 @@ public class RemoteLoggerServer {
 						break;
 					}
 					if (received.length() > 0) {
-						out.println(received);
+						out.print(received);
 						out.flush();
 					}
 				} catch (EOFException e) {
