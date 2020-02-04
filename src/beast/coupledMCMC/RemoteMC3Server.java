@@ -11,7 +11,9 @@ import beast.core.Description;
 import beast.core.Input;
 import beast.core.Operator;
 import beast.core.Input.Validate;
+import beast.core.Logger;
 import beast.core.Runnable;
+import beast.core.util.Log;
 import beast.util.XMLParser;
 import beast.util.XMLParserException;
 
@@ -129,14 +131,16 @@ public class RemoteMC3Server extends Runnable {
 						int i = Integer.parseInt(line.split(",")[1]);
 						mc3.setChainNr(i);
 						// only make the cold chain log
-						for (CoupledLogger logger : mc3.loggers) {
-							logger.setSuppressLogging(i == 0);
+						for (CoupledLogger logger : mc3.coupledLoggersInput.get()) {
+							logger.setSuppressLogging(i != 0);
 						}
 						out.writeUTF("chain nr set to " + i);						
 					}
 					
-					System.out.println(line);
-					out.writeUTF("Message received " + line);
+					Log.debug.println(line);
+					Log.debug("Message received " + line);
+				} catch (EOFException e) {
+					break;
 				} catch (IOException i) {
 					System.out.println(i);
 				}
@@ -154,40 +158,45 @@ public class RemoteMC3Server extends Runnable {
 	private String getOperatorParameters() {
 		StringBuilder b = new StringBuilder();
 		for (int i = 0; i < mc3.operatorsInput.get().size(); i++){
-			Operator operator1 = mc3.operatorsInput.get().get(i);
+			Operator operator = mc3.operatorsInput.get().get(i);
 
-		    int m_nNrRejected = operator1.get_m_nNrRejected();
-		    b.append(',').append(m_nNrRejected);
-		    int m_nNrAccepted = operator1.get_m_nNrAccepted();
-		    b.append(',').append(m_nNrAccepted);
-		    int m_nNrRejectedForCorrection = operator1.get_m_nNrRejectedForCorrection();
-		    b.append(',').append(m_nNrRejectedForCorrection);
-		    int m_nNrAcceptedForCorrection = operator1.get_m_nNrAcceptedForCorrection();
-		    b.append(',').append(m_nNrAcceptedForCorrection);
+		    int nrRejected = operator.get_m_nNrRejected();
+		    b.append(',').append(nrRejected);
+		    int nrAccepted = operator.get_m_nNrAccepted();
+		    b.append(',').append(nrAccepted);
+		    int nrRejectedForCorrection = operator.get_m_nNrRejectedForCorrection();
+		    b.append(',').append(nrRejectedForCorrection);
+		    int nrAcceptedForCorrection = operator.get_m_nNrAcceptedForCorrection();
+		    b.append(',').append(nrAcceptedForCorrection);
 		    
-		    double coercableParameterValue = operator1.getCoercableParameterValue();
+		    double coercableParameterValue = operator.getCoercableParameterValue();
 		    b.append(',').append(coercableParameterValue);
 			
-		}			
+		}
+		
+		if (b.toString().split(",").length != mc3.operatorsInput.get().size() * 5 + 1) {
+			System.err.println("something is wrong with the length of generated OperatorParameters");
+		}
 		return b.toString();
 	}
 
 	private void setOperatorParameters(String line) {
 		String [] strs = line.split(",");
+		if (strs.length != mc3.operatorsInput.get().size() * 5 + 1) {
+			System.err.println("something is wrong with the length of transmitted OperatorParameters");
+		}
 		int k = 1;
 		for (int i = 0; i < mc3.operatorsInput.get().size(); i++){
-			Operator operator1 = mc3.operatorsInput.get().get(i);
+			Operator operator = mc3.operatorsInput.get().get(i);
 
-		    int m_nNrRejected = Integer.parseInt(strs[k++]);
-		    int m_nNrAccepted = Integer.parseInt(strs[k++]);
-		    int m_nNrRejectedForCorrection = Integer.parseInt(strs[k++]);
-		    int m_nNrAcceptedForCorrection = Integer.parseInt(strs[k++]);
-		    
-		    operator1.setAcceptedRejected(m_nNrAccepted, m_nNrRejected, m_nNrAcceptedForCorrection, m_nNrRejectedForCorrection);
-		    
+		    int nrRejected = Integer.parseInt(strs[k++]);
+		    int nrAccepted = Integer.parseInt(strs[k++]);
+		    int nrRejectedForCorrection = Integer.parseInt(strs[k++]);
+		    int nrAcceptedForCorrection = Integer.parseInt(strs[k++]);
+		    operator.setAcceptedRejected(nrAccepted, nrRejected, nrAcceptedForCorrection, nrRejectedForCorrection);
 		    
 		    double coercableParameterValue = Double.parseDouble(strs[k++]);
-		    operator1.setCoercableParameterValue(coercableParameterValue);
+		    operator.setCoercableParameterValue(coercableParameterValue);
 		}			
 		
 	}

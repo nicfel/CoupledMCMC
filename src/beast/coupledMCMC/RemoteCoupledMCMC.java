@@ -225,6 +225,7 @@ public class RemoteCoupledMCMC extends MCMC {
 //				}
 				// initialize each chain individually
 				chains[i].setTemperature(i, getTemperature(i));
+				chains[i].setChainNr(i);
 				// the following set resampleEvery but also triggers the remove MC3 to call run()
 				chains[i].setResampleEvery(resampleEvery);
 							

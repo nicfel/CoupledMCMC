@@ -114,6 +114,13 @@ public class RemoteHeatedChain {
 	}	
 	
 	protected void setBeta(double beta){
+		try {
+			out.writeUTF("setb," + beta);
+			String response = sin.readUTF();
+			System.err.println(response);
+		} catch (IOException e) {
+			e.printStackTrace();
+		} 
 		this.beta = beta;		
 	}	
 	
@@ -260,7 +267,7 @@ public class RemoteHeatedChain {
 	
 	public void setOperatorTuningInfo(String tuning) {
 		try {
-			out.writeUTF("seto," + tuning);
+			out.writeUTF("seto" + tuning);
 			String response = sin.readUTF();
 			System.err.println(response);
 		} catch (IOException e) {

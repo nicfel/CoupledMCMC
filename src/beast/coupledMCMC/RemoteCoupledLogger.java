@@ -43,6 +43,12 @@ public class RemoteCoupledLogger extends CoupledLogger {
 		super.initAndValidate();
 	}
 
+	
+	@Override
+	protected boolean openLogFile() throws IOException {
+		return true;
+	}
+	
 	@Override
 	public void init() throws IOException {
 		if (fileNameInput.get() != null) {

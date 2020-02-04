@@ -1,6 +1,9 @@
 package beast.coupledMCMC;
 
 import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.ServerSocket;
@@ -83,10 +86,15 @@ public class RemoteLoggerServer {
 			// first message indicates the file name
 			try {
 				received = dis.readUTF();
+				Log.warning("Creating file at " + received);
 				if (received.equals("null")) {
 					out = System.out;
 				} else {
-					out = new PrintStream(received);
+					if (new File(received).exists()) {
+						out = new PrintStream(new FileOutputStream(received, true));
+					} else {
+						out = new PrintStream(received);
+					}
 				}
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
@@ -101,8 +109,12 @@ public class RemoteLoggerServer {
 					if (received.equals("close")) {
 						break;
 					}
-					out.println(received);
-					out.flush();
+					if (received.length() > 0) {
+						out.println(received);
+						out.flush();
+					}
+				} catch (EOFException e) {
+					break;
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
