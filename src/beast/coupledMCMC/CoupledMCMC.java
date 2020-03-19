@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Citations(
@@ -259,11 +260,12 @@ public class CoupledMCMC extends MCMC {
 		}
 
 		
-		if (preScheduleInput.get()){
+		if (neighbourSwappingInput.get()) {
+			runNeigbours();
+			return;
+		}else {
 			runPrescheduled();
 			return;
-		}else if (neighbourSwappingInput.get()) {
-			runNeigbours();
 		}
 	} // run
 	
@@ -276,7 +278,6 @@ public class CoupledMCMC extends MCMC {
 			long runk = chainLength;
 			
 			if (runTillIteration[k].size()>0)  runk = runTillIteration[k].get(0);
-
 			
 			threads[k] = new HeatedChainThread(k, runk);
 			threads[k].start();
@@ -490,8 +491,16 @@ public class CoupledMCMC extends MCMC {
 		
 		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {	
 			// get the chains to swap, conditioning on them being neighbours
-			int i = Randomizer.nextInt(chains.length-1); 
-			int j = i+1;
+			int chain_i = Randomizer.nextInt(chains.length-1);
+			int i=-1,j=-1;
+			
+			for (int k = 0; k<chains.length; k++) {
+				if (chains[k].getChainNr()==chain_i)
+					i=k;
+				if (chains[k].getChainNr()==chain_i+1)
+					j=k;	
+			}
+						
 			// look that every chain goes to the next place 
 			for (int k = 0; k < chains.length; k++) {
 				try {
@@ -577,7 +586,7 @@ public class CoupledMCMC extends MCMC {
 			}
 
 			for (int k = 0; k < chains.length; k++) {
-				threads[k] = new HeatedChainThread(k, resampleEvery);
+				threads[k] = new HeatedChainThread(k, sampleNr+resampleEvery);
 				threads[k].start();
 			}
 
