@@ -585,9 +585,11 @@ public class CoupledMCMC extends MCMC {
 	            
 			}
 
-			for (int k = 0; k < chains.length; k++) {
-				threads[k] = new HeatedChainThread(k, sampleNr+resampleEvery);
-				threads[k].start();
+			if (sampleNr < chainLength) {
+				for (int k = 0; k < chains.length; k++) {
+					threads[k] = new HeatedChainThread(k, sampleNr+resampleEvery);
+					threads[k].start();
+				}
 			}
 
 			
