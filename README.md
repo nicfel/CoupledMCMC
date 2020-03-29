@@ -9,6 +9,12 @@ Choose `CoupledMCMC` from the list of packages.
 
 ## How to set up your BEAST2 analysis to run with coupled MCMC/parallel tempering 
 
+### By using the conversion BEAUti
+
+If you want to run a Standard analysis (i.e. an analysis using the Standard template for MCMC analyses), you can choose the CoupledMCMC template instead under the `File => Templates => CoupledMCMC` menu. Then you can set up the analysis as you would a Standard analysis, except the MCMC tab is replaced by the CoupledMCMC tab.
+
+If you want to run another analysis than a Standard one, you still can use CoupledMCMC per below.
+
 ### By using the conversion app
 
 After you installed the `CoupledMCMC` package (version 0.1.5 or better), the `MCMC2CoupledMCMC` app becomes available in the app launcher.
