@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.commons.math.MathException;
+import org.apache.commons.math.distribution.BetaDistributionImpl;
+
 @Citations(
 		{
 		@Citation(value= "Müller, Nicola Felix, and Remco Bouckaert. Coupled MCMC in BEAST 2. bioRxiv (2019): 603514. ", 
@@ -57,6 +60,8 @@ public class CoupledMCMC extends MCMC {
 	public Input<Boolean> preScheduleInput = new Input<>("preSchedule","if true, how long chains are run for is scheduled at the beginning", true);
 	public Input<Boolean> neighbourSwappingInput = new Input<>("neighbourSwapping","if true, only chains that are next to each other are swapped", false);
 
+	public Input<Boolean> useBetaDistributionInput = new Input<>("useBetaDistribution","if true, the spacing between chains is assumed to be for the quantiles of a beta distribution with alpha=1 and beta=tuneable", false);
+
 	// nr of samples between re-arranging states
 	int resampleEvery;	
 	
@@ -69,6 +74,9 @@ public class CoupledMCMC extends MCMC {
 	
 	/** threads for running MCMC chains **/
 	Thread [] threads;
+	
+	/** beta distribution for spacing*/
+	org.apache.commons.math.distribution.BetaDistributionImpl m_dist;
 	
 	/** keep track of time taken between logs to estimate speed **/
     long startLogTime;
@@ -85,6 +93,10 @@ public class CoupledMCMC extends MCMC {
 	int successfullSwaps = 0, successfullSwaps0 = 0;
 	
 	long sampleOffset = 0;
+	
+	// defines which scheme for spacing between the heated chains to use
+	private enum Spacing{Geometric, Beta };
+	private Spacing spacing;
 
 	@Override
 	public void initAndValidate() {
@@ -104,6 +116,13 @@ public class CoupledMCMC extends MCMC {
 		acceptedSwaps = new ArrayList<>();				
 		
 		optimise = optimiseInput.get();
+		
+		if (useBetaDistributionInput.get()) {
+			m_dist = new BetaDistributionImpl(1, deltaTemperature);
+			spacing = Spacing.Beta;
+		}else {
+			spacing = Spacing.Geometric;
+		}
 				
 	} // initAndValidate
 	
@@ -125,6 +144,7 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("neighbourSwapping=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("useBetaDistribution=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("spec=\"Logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");
@@ -200,7 +220,19 @@ public class CoupledMCMC extends MCMC {
 	}
 	
 	private double getTemperature(int i){
-		return i*deltaTemperature;
+		if (spacing==Spacing.Geometric) {
+			return i*deltaTemperature;
+		}else {
+			double beta=-1;
+			try {
+				beta = 1-m_dist.cumulativeProbability(i/(double) chains.length);
+			} catch (MathException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			return 1/beta -1;
+		}
+		
 	}
 	
 	class HeatedChainThread extends Thread {
@@ -400,6 +432,9 @@ public class CoupledMCMC extends MCMC {
 	            }
 	            HeapSort.sort(temp, order);
 	            
+	            // if the spacing is using a beta distribution, update the beta distribution
+	            if (spacing==Spacing.Beta)
+	            	m_dist = new BetaDistributionImpl(1, deltaTemperature);
 	            
 	            // set new temperatures asynchronously, in same order as before
 	            for (int k = 0; k < n; k++) {
@@ -577,6 +612,9 @@ public class CoupledMCMC extends MCMC {
 	            }
 	            HeapSort.sort(temp, order);
 	            
+	            // if the spacing is using a beta distribution, update the beta distribution
+	            if (spacing==Spacing.Beta)
+	            	m_dist = new BetaDistributionImpl(1, deltaTemperature);
 	            
 	            // set new temperatures asynchronously, in same order as before
 	            for (int k = 0; k < n; k++) {
@@ -769,6 +807,7 @@ public class CoupledMCMC extends MCMC {
 		for (int k = acceptedSwaps.size()/10; k < acceptedSwaps.size(); k++)
 			if (acceptedSwaps.get(k))
 				p_local += 1;
+		
 		p_local /= acceptedSwaps.size();
 		
 		
