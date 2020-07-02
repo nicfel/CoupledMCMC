@@ -223,12 +223,14 @@ public class CoupledMCMC extends MCMC {
 		if (spacing==Spacing.Geometric) {
 			return i*deltaTemperature;
 		}else {
-			double beta=-1;
-			try {
-				beta = 1-m_dist.cumulativeProbability(i/(double) chains.length);
-			} catch (MathException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+			double beta=0;
+			if (deltaTemperature>0) {
+				try {
+					beta = 1-m_dist.cumulativeProbability(i/(double) chains.length);
+				} catch (MathException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 			return 1/beta -1;
 		}
@@ -678,7 +680,6 @@ public class CoupledMCMC extends MCMC {
 		}
 	}
 	
-
 	/* swaps the states of mcmc1 and mcmc2 */
 	void swapLoggers(HeatedChain mcmc1, HeatedChain mcmc2) {
 		int mcmc2size = mcmc2.coupledLoggersInput.get().size();
@@ -757,7 +758,7 @@ public class CoupledMCMC extends MCMC {
 			while (i == j) {
 				j = Randomizer.nextInt(chains.length);
 			}
-			if (neighbourSwappingInput.get()) {
+			if (!neighbourSwappingInput.get()) {
 				runTillIteration[i].add(sampleNr);
 				runTillIteration[j].add(sampleNr);
 			}else {		
