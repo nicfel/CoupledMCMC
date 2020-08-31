@@ -369,7 +369,7 @@ public class CoupledMCMC extends MCMC {
 			double p1before = chains[i].getCurrentLogLikelihood();
 			double p2before = chains[j].getCurrentLogLikelihood();
 
-			// robust calculations can be extremly expensive, just calculate the new probs instead 
+			// robust calculations can be extremely expensive, just calculate the new probs instead 
 			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
 			double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
 			

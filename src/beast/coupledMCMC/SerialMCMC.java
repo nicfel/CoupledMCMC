@@ -40,6 +40,9 @@ public class SerialMCMC extends MCMC {
 	
 	public Input<Boolean> useBetaDistributionInput = new Input<>("useBetaDistribution","if true, the spacing between chains is assumed to be for the quantiles of a beta distribution with alpha=1 and beta=tuneable", false);
 
+	public Input<Integer> logCounterInput = new Input<>("logCounter","subsample frequency of screen log output: higher means less screen output", 100);
+
+	
 	// nr of samples between re-arranging states
 	int resampleEvery;	
 	
@@ -51,7 +54,7 @@ public class SerialMCMC extends MCMC {
 	HeatedChain [] chains;
 	
 	/** threads for running MCMC chains **/
-	Thread [] threads;
+	// Thread [] threads;
 	
 	/** beta distribution for spacing*/
 	org.apache.commons.math.distribution.BetaDistributionImpl m_dist;
@@ -65,7 +68,7 @@ public class SerialMCMC extends MCMC {
 	// keep track of when threads finish in order to optimise thread usage
 	long [] finishTimes;
 		
-	private ArrayList<Long>[] runTillIteration;
+//	private ArrayList<Long>[] runTillIteration;
 	
 	int totalSwaps = 0;
 	int successfullSwaps = 0, successfullSwaps0 = 0;
@@ -178,7 +181,7 @@ public class SerialMCMC extends MCMC {
 			}
 		}		
 		// ensure that each chain has the same starting point
-		threads = new Thread[chains.length];
+		// threads = new Thread[chains.length];
 		finishTimes = new long[chains.length];
 		
 
@@ -207,24 +210,6 @@ public class SerialMCMC extends MCMC {
 			return 1/beta -1;
 		}
 		
-	}
-	
-	class HeatedChainThread extends Thread {
-		final int chainNr;
-		long runUntil;
-
-		HeatedChainThread(int chainNr, long runUntil) {
-			this.chainNr = chainNr;
-			this.runUntil = runUntil;
-		}		
-		
-		public void run() {
-			try {
-				finishTimes[chainNr] = chains[chainNr].runTillResample(runUntil);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
 	}
 	
 	@Override 
@@ -270,51 +255,46 @@ public class SerialMCMC extends MCMC {
 	} // run
 	
 	private void runNeigbours(){
-		// run each thread until it's next swapping time
-		// start threads with individual chains here.
-		threads = new Thread[chains.length];
 		for (int k = 0; k < chains.length; k++) {
-			threads[k] = new HeatedChainThread(k, resampleEvery);
-			threads[k].start();
+			chains[k].currentSample = 0;
+			try {
+				chains[k].runTillResample(resampleEvery);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		
 		startLogTime = -1;
 		long startSample = 0;
 		
 		// print header for system output
-		System.out.println("sample\tswapsColdCain\tswapProbability\tdeltaTemperature");		
+		System.out.println("sample\tchain nr\tswapsColdCain\tswapProbability\tdeltaTemperature");		
 		double currProb = ((double) successfullSwaps/totalSwaps);
 		if (Double.isNaN(currProb))
 			currProb = 0.0;
-		System.out.print("\t" + (startSample + sampleOffset) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature + "\n");
+		System.out.print("\t" + (startSample + sampleOffset) + "\t0\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature + "\n");
 
-		
+
+		int logCounter = 0;
 		for (long sampleNr = resampleEvery; sampleNr <= chainLength; sampleNr += resampleEvery) {	
 			// get the chains to swap, conditioning on them being neighbours
-			int chain_i = Randomizer.nextInt(chains.length-1);
-			int i=-1,j=-1;
+			int chain_i = chains[0].getChainNr(); //Randomizer.nextInt(chains.length-1);
+			
+			int neighbour = Randomizer.nextBoolean() ?
+					(chain_i == 0 ? 1 : chain_i - 1) :
+					(chain_i == chains.length - 1 ? chain_i - 1 : chain_i + 1);
+			
+			int i = 0, j = -1;
 			
 			for (int k = 0; k<chains.length; k++) {
-				if (chains[k].getChainNr()==chain_i)
-					i=k;
-				if (chains[k].getChainNr()==chain_i+1)
-					j=k;	
-			}
-						
-			// look that every chain goes to the next place 
-//			for (int k = 0; k < chains.length; k++) {
-			{	int k = 0;
-				try {
-					threads[k].join();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+				if (chains[k].getChainNr() == neighbour)
+					j = k;	
 			}
 			
 			double p1before = chains[i].getCurrentLogLikelihood();
 			double p2before = chains[j].getCurrentLogLikelihood();
 
-			// robust calculations can be extremly expensive, just calculate the new probs instead 
+			// robust calculations can be extremely expensive, just calculate the new probs instead 
 			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
 			double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
 			
@@ -341,8 +321,8 @@ public class SerialMCMC extends MCMC {
 				// swap Operator tuning
 				swapOperatorTuning(chains[i], chains[j]);		
 				
-				if (chains[j].getBeta() < chains[i].getBeta())
-					throw new IllegalArgumentException("error in temperatures of chains");
+//				if (chains[j].getBeta() < chains[i].getBeta())
+//					throw new IllegalArgumentException("error in temperatures of chains");
 				
 				if (optimise) {
 					acceptedSwaps.add(true);
@@ -390,27 +370,35 @@ public class SerialMCMC extends MCMC {
 			}
 
 			if (sampleNr < chainLength) {
-				//for (int k = 0; k < chains.length; k++) {
-				int k = 0;
-					threads[k] = new HeatedChainThread(k, sampleNr+resampleEvery);
-					threads[k].start();
-				//}
+				chains[0].currentSample = sampleNr + 1;
+				try {
+					finishTimes[0] = chains[0].runTillResample(sampleNr+resampleEvery);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				if (chains[0].getChainNr() != 0) {
+					sampleNr -= resampleEvery;
+				}
 			}
 
-			
-			System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + " ");
-			if (startLogTime>0){			
-	            final long logTime = System.currentTimeMillis();
-	            final int secondsPerMSamples = (int) ((logTime - startLogTime) * 1000.0 / (sampleNr - startSample + 1.0));
-	            final String timePerMSamples =
-	                    (secondsPerMSamples >= 3600 ? secondsPerMSamples / 3600 + "h" : "") +
-	                            (secondsPerMSamples >= 60 ? (secondsPerMSamples % 3600) / 60 + "m" : "") +
-	                            (secondsPerMSamples % 60 + "s");
+			if (logCounter == logCounterInput.get()) {
+				System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + chains[0].getChainNr() + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + " ");
+				logCounter = 0;
+				if (startLogTime>0){			
+		            final long logTime = System.currentTimeMillis();
+		            final int secondsPerMSamples = (int) ((logTime - startLogTime) * 1000.0 / (sampleNr - startSample + 1.0));
+		            final String timePerMSamples =
+		                    (secondsPerMSamples >= 3600 ? secondsPerMSamples / 3600 + "h" : "") +
+		                            (secondsPerMSamples >= 60 ? (secondsPerMSamples % 3600) / 60 + "m" : "") +
+		                            (secondsPerMSamples % 60 + "s");
 
-            
-	            System.out.print(timePerMSamples + "/Msamples\n");
-			}else{
-	            System.out.print("--\n");
+	            
+		            System.out.print(timePerMSamples + "/Msamples\n");
+				}else{
+		            System.out.print("--\n");
+				}
+			} else {
+				logCounter++;
 			}
 			if (sampleNr>=10000 && startLogTime<0){
 				startSample = sampleNr;
@@ -425,24 +413,10 @@ public class SerialMCMC extends MCMC {
 		        }
 			}			
 		}
-		// ensure that every chains ran to the end even if it's not participating in the last swap
-//		for (int i = 0; i < threads.length; i++){
-//			try {
-//				threads[i].join();
-//			} catch (InterruptedException e) {
-//				e.printStackTrace();
-//			}
-//		}
 		
 		System.err.println("#Swap attemps = " + totalSwaps);
 		System.err.println("#Successfull swaps = " + successfullSwaps);
 		System.err.println("#Successfull swaps with cold chain = " + successfullSwaps0);
-		// wait 5 seconds for the log to complete
-		try {
-			Thread.sleep(5000);
-		} catch (InterruptedException e) {
-			// ignore
-		}
 	}
 	
 
