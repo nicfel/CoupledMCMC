@@ -1,6 +1,7 @@
 package beast.coupledMCMC;
 
 
+
 import beast.app.beauti.BeautiDoc;
 import beast.core.*;
 import beast.core.util.Log;
@@ -9,10 +10,12 @@ import beast.util.Randomizer;
 import beast.util.XMLParser;
 import beast.util.XMLProducer;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +25,7 @@ import org.apache.commons.math.distribution.BetaDistributionImpl;
 
 		
 @Description("Serial temperaing aka umbrella sampling")
+@Citation("Geyer, C.J., 2011. Importance sampling, simulated tempering, and umbrella sampling. In Handbook of Markov Chain Monte Carlo (pp. 295-311). Chapman & Hall/CRC, Boca Raton.")
 public class SerialMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 100);
@@ -78,6 +82,47 @@ public class SerialMCMC extends MCMC {
 	// defines which scheme for spacing between the heated chains to use
 	private enum Spacing{Geometric, Beta };
 	private Spacing spacing;
+	
+	private MyLogger screenlog;
+	
+	class MyLogger extends Logger {
+		
+		MyLogger(Logger other) {
+			initByName("log", other.loggersInput.get(), "logEvery", other.everyInput.get());
+		}
+		
+		@Override
+		public void log(long sampleNr) {
+	        if ((sampleNr < 0) || (sampleNr % every > 0)) {
+	            return;
+	        }
+	        if (sampleOffset >= 0) {
+	            if (sampleNr == 0) {
+	                // don't need to duplicate the last line in the log
+	                return;
+	            }
+	            sampleNr += sampleOffset;
+	        }
+
+	        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+	        PrintStream out = new PrintStream(baos);
+
+	        for (final BEASTObject m_logger : loggersInput.get()) {
+	            ((Loggable)m_logger).log(sampleNr, out);
+	        }
+
+	        // Acquire log string and trim excess tab
+	        String logContent;
+	        try {
+	            logContent = baos.toString("ASCII").trim();
+	        } catch (UnsupportedEncodingException e) {
+	            throw new RuntimeException("ASCII string encoding not supported: required for logging!");
+	        }
+
+            // logContent = prettifyLogLine(logContent);
+            m_out.print(logContent);
+	 	}
+	}
 
 	@Override
 	public void initAndValidate() {
@@ -141,6 +186,8 @@ public class SerialMCMC extends MCMC {
 			}
 		}
 			
+		
+		screenlog = null;
 		// create new chains		
 		for (int i = 0; i < chains.length; i++) {
 			XMLParser parser = new XMLParser();
@@ -155,6 +202,9 @@ public class SerialMCMC extends MCMC {
 				// remove all screen loggers
 				for (int j = chains[i].coupledLoggersInput.get().size()-1; j >=0 ; j--){
 					if (chains[i].coupledLoggersInput.get().get(j).getID().contentEquals("screenlog")){
+						if (i == 0) {
+							screenlog = new MyLogger(chains[i].coupledLoggersInput.get().get(j)); 
+						}
 						chains[i].coupledLoggersInput.get().remove(j);
 					}
 				}
@@ -272,7 +322,13 @@ public class SerialMCMC extends MCMC {
 		double currProb = ((double) successfullSwaps/totalSwaps);
 		if (Double.isNaN(currProb))
 			currProb = 0.0;
-		System.out.print("\t" + (startSample + sampleOffset) + "\t0\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature + "\n");
+		try {
+			System.out.print("\t" + (startSample + sampleOffset) + "\t0\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature);
+			screenlog.init();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 
 		int logCounter = 0;
@@ -383,6 +439,7 @@ public class SerialMCMC extends MCMC {
 
 			if (logCounter == logCounterInput.get()) {
 				System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + chains[0].getChainNr() + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + " ");
+				screenlog.log(0);
 				logCounter = 0;
 				if (startLogTime>0){			
 		            final long logTime = System.currentTimeMillis();
