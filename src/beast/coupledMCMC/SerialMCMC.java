@@ -5,7 +5,6 @@ package beast.coupledMCMC;
 import beast.app.beauti.BeautiDoc;
 import beast.core.*;
 import beast.core.util.Log;
-import beast.util.HeapSort;
 import beast.util.Randomizer;
 import beast.util.XMLParser;
 import beast.util.XMLProducer;
@@ -18,6 +17,7 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.math.MathException;
@@ -83,6 +83,11 @@ public class SerialMCMC extends MCMC {
 	private enum Spacing{Geometric, Beta };
 	private Spacing spacing;
 	
+	/** normalisation constant, which helps compensate for difference in posterios under different temperatures
+	 * will be auto-optimised during run
+	 **/ 
+	private double [] c;
+	
 	private MyLogger screenlog;
 	
 	class MyLogger extends Logger {
@@ -121,6 +126,7 @@ public class SerialMCMC extends MCMC {
 
             // logContent = prettifyLogLine(logContent);
             m_out.print(logContent);
+            m_out.print("\t");
 	 	}
 	}
 
@@ -134,6 +140,8 @@ public class SerialMCMC extends MCMC {
 		}
 		// initialize the differently heated chains
 		chains = new HeatedChain[nrOfChainsInput.get()];
+		
+		c = new double[chains.length];
 		
 		resampleEvery = resampleEveryInput.get();				
 		
@@ -316,6 +324,7 @@ public class SerialMCMC extends MCMC {
 		
 		startLogTime = -1;
 		long startSample = 0;
+		int [] chainCount = new int[chains.length];
 		
 		// print header for system output
 		System.out.println("sample\tchain nr\tswapsColdCain\tswapProbability\tdeltaTemperature");		
@@ -323,7 +332,7 @@ public class SerialMCMC extends MCMC {
 		if (Double.isNaN(currProb))
 			currProb = 0.0;
 		try {
-			System.out.print("\t" + (startSample + sampleOffset) + "\t0\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature);
+			System.out.print("\t" + (startSample + sampleOffset) + "\t" + Arrays.toString(chainCount) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature);
 			screenlog.init();
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
@@ -347,14 +356,15 @@ public class SerialMCMC extends MCMC {
 					j = k;	
 			}
 			
-			double p1before = chains[i].getCurrentLogLikelihood();
-			double p2before = chains[j].getCurrentLogLikelihood();
-
 			// robust calculations can be extremely expensive, just calculate the new probs instead 
 			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-			double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			double p2after = chains[i].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
 			
-			double logAlpha = (p1after + p2after) - (p1before  + p2before);
+			double logAlpha = chain_i == 0 || chain_i == chains.length-1 ? -Math.log(0.5) : 0;
+			logAlpha += neighbour == 0 || neighbour == chains.length-1 ? Math.log(0.5) : 0;
+			logAlpha += (p1after - p2after); 
+			logAlpha += c[chain_i] - c[neighbour];
+						
 			if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
 				successfullSwaps++;
 				if (i == 0) {
@@ -376,10 +386,7 @@ public class SerialMCMC extends MCMC {
 				
 				// swap Operator tuning
 				swapOperatorTuning(chains[i], chains[j]);		
-				
-//				if (chains[j].getBeta() < chains[i].getBeta())
-//					throw new IllegalArgumentException("error in temperatures of chains");
-				
+								
 				if (optimise) {
 					acceptedSwaps.add(true);
 				}
@@ -390,39 +397,25 @@ public class SerialMCMC extends MCMC {
 			}
 			totalSwaps++;
 			
-			if (optimise && totalSwaps > optimiseDelayInput.get()) {
-				double delta = getDelta();			
-				
-				deltaTemperature += delta;
-	            
-	            // boundary case checks
-	    		if (maxTemperatureInput.get() != null){
-	    			deltaTemperature = Math.max(deltaTemperature, maxTemperatureInput.get()/(chains.length-1)); 
-	            } else if (deltaTemperature < 0) {
-	            	deltaTemperature = 0;
-	            }
-	            
-	            // figure out order of chains
-	            int n = chains.length;
-	            int [] order = new int[n];
-	            for (int k = 0; k < n; k++) {
-	            	order[k] = k;
-	            }
-	            double [] temp = new double[chains.length];
-	            for (int k = 0; k < n; k++) {
-	            	temp[k] = 1.0 - chains[k].getBeta();
-	            }
-	            HeapSort.sort(temp, order);
-	            
-	            // if the spacing is using a beta distribution, update the beta distribution
-	            if (spacing==Spacing.Beta)
-	            	m_dist = new BetaDistributionImpl(1, deltaTemperature);
-	            
-	            // set new temperatures asynchronously, in same order as before
-	            for (int k = 0; k < n; k++) {
-	            	chains[k].setTemperature(0, getTemperature(chains[k].getChainNr()));
-	            }
-	            
+			if (optimise) {
+				if (totalSwaps > optimiseDelayInput.get()) {
+					// automatic weight estimation by using the mean of
+					// observed logP for each temperature
+					// Keeps on updating unlike the scheme in:
+					// Park, S. and Pande, V.S., 2007. Choosing weights for simulated tempering. Physical Review E, 76(1), p.016703.
+					// DOI: 10.1103/PhysRevE.76.016703
+					double logP = chains[0].getUnscaledCurrentLogLikelihood();
+					if (c[0] == 0) {
+						for (int k = 0; k < chains.length; k++) {
+							c[chains[k].getChainNr()] = logP * chains[k].getBeta(); 
+						}
+					} else {
+						double delta = 1.0 / totalSwaps;
+						for (int k = 0; k < chains.length; k++) {
+							c[chains[k].getChainNr()] = c[chains[k].getChainNr()] * (1-delta) + logP * chains[k].getBeta() * delta; 
+						}
+					}
+				}	            
 			}
 
 			if (sampleNr < chainLength) {
@@ -437,8 +430,13 @@ public class SerialMCMC extends MCMC {
 				}
 			}
 
+			
+			chainCount[chains[0].getChainNr()]++;
+			
 			if (logCounter == logCounterInput.get()) {
-				System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + chains[0].getChainNr() + "\t" + successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + " ");
+				System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + Arrays.toString(chainCount) + "\t" +
+//						Arrays.toString(c) + "\t" + 
+						successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + " ");
 				screenlog.log(0);
 				logCounter = 0;
 				if (startLogTime>0){			
@@ -564,56 +562,6 @@ public class SerialMCMC extends MCMC {
 			e.printStackTrace();
 		}
 
-	}
-	
-	double getDelta() {
-		double target = targetAcceptanceProbabilityInput.get();	
-
-		double p = (double) successfullSwaps / totalSwaps;
-		double p_local = 0.0;
-		
-		// compute the local acceptance probability
-		acceptedSwaps.remove(0);
-		// compute local acceptance probability
-		for (int k = acceptedSwaps.size()/10; k < acceptedSwaps.size(); k++)
-			if (acceptedSwaps.get(k))
-				p_local += 1;
-		
-		p_local /= acceptedSwaps.size();
-		
-		
-		
-		// check that the local and global acceptance probability are at the same relative position
-		// compared to the target acceptance probability
-		if ((p<target) && (p_local>target))
-			return 0.0;
-		else if ((p>target) && (p_local<target))
-			return 0.0;		
-		
-
-		double swapsTransformed;
-		
-//		if (optimise==Optimise.Log) {
-//			swapsTransformed = Math.log(totalSwaps + 1.0);
-//		}else if (optimise==Optimise.Sqrt) {
-//			swapsTransformed = Math.sqrt(totalSwaps);			
-//		}else {
-			swapsTransformed = (double) totalSwaps;		
-//		}
-				
-		// update maxTemperature		
-		double delta = (p - target) / swapsTransformed;
-		
-		// prevent too large adaptions that lead to overshooting
-		double maxstep = 1.0/(optimiseDelayInput.get()*10.0);
-		
-		if (delta>maxstep)
-			delta = maxstep;
-		if (delta<-maxstep)
-			delta = -maxstep;
-		
-		
-		return delta;
 	}
 	
 }
