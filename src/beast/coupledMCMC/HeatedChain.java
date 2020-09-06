@@ -363,7 +363,7 @@ public class HeatedChain extends MCMC {
         return operator;
     }
 
-    private boolean isTooDifferent(double logLikelihood, double originalLogP) {
+    protected boolean isTooDifferent(double logLikelihood, double originalLogP) {
     	//return Math.abs((logLikelihood - originalLogP)/originalLogP) > 1e-6;
     	return Math.abs(logLikelihood - originalLogP) > 1e-6;
 	}
