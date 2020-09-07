@@ -89,7 +89,7 @@ public class SerialMCMC extends MCMC {
 	 * will be auto-optimised during run
 	 **/ 
 	private double [] c;
-	
+	private int [] chainCount;
 	private ScreenLogger screenlog;
 	
 	
@@ -175,6 +175,8 @@ public class SerialMCMC extends MCMC {
 	    		if (s != null) {
 	    			s = s.replaceAll("\n", "\\n");
 	    			out.println(s);
+	    		} else {
+	    			out.println();
 	    		}
 	    	}
 	    }
@@ -217,7 +219,8 @@ public class SerialMCMC extends MCMC {
 			spacing = Spacing.Geometric;
 		}
 				
-				
+		chainCount = new int[chains.length];
+
 	} // initAndValidate
 	
 	private void initRun(){
@@ -281,7 +284,7 @@ public class SerialMCMC extends MCMC {
 		        posterior = posteriorInput.get();
 
 		        if (restoreFromFile) {
-//		            state.restoreFromFile();
+		            state.restoreFromFile();
 //		            operatorSchedule.restoreFromFile();
 		            burnIn = 0;
 		            oldLogLikelihood = state.robustlyCalcPosterior(posterior);
@@ -446,48 +449,20 @@ public class SerialMCMC extends MCMC {
 				);
 		
 		int i = 0;
-		// create new chains		
-//		for (int i = 0; i < chains.length; i++) {
-//			XMLParser parser = new XMLParser();
-//			String sXML2 = sXML;
-//			if (i>0){
-//				sXML2 = sXML2.replaceAll("fileName=\"", "fileName=\"chain" + i+ "");
-//			}
-//			
-			try {
-//				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
-	
-				// remove all screen loggers
-//				for (int j = chains[i].coupledLoggersInput.get().size()-1; j >=0 ; j--){
-//					if (chains[i].coupledLoggersInput.get().get(j).getID().contentEquals("screenlog")){
-//						if (i == 0) {
-//							screenlog = new ScreenLogger(chains[i].coupledLoggersInput.get().get(j)); 
-//						}
-//						chains[i].coupledLoggersInput.get().remove(j);
-//					}
-//				}
-//				
-//				// remove all loggers of heated chains if they are not logged
-//				if (i != 0){
-//					for (int j = 0; j < chains[i].coupledLoggersInput.get().size(); j++)
-//						chains[i].coupledLoggersInput.get().get(j).setSuppressLogging(true);					
-//				}
-				// initialize each chain individually
-				chains[i].setResampleEvery(resampleEvery);
-				chains[i].setTemperature(i, getTemperature(i));
-				
-				// needed to avoid error of putting the working dir twice
-				String[] splittedFileName = stateFileName.split("/");
-				
-				chains[i].setStateFile(
-						splittedFileName[splittedFileName.length-1].replace(".state", "." + i + "state"), restoreFromFile);
-				chains[i].setChainNr(i);
-				chains[i].run();
 
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-//		}
+		// create new chains		
+		try {
+			// initialize each chain individually
+			chains[i].setResampleEvery(resampleEvery);
+			chains[i].setTemperature(i, getTemperature(i));
+							
+			chains[i].setStateFile(stateFileName, restoreFromFile);
+			chains[i].setChainNr(i);
+			chains[i].run();
+
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		for (i = 1; i < chains.length; i++) {
 			chains[i] = new HeatedChain();
 			
@@ -550,12 +525,14 @@ public class SerialMCMC extends MCMC {
 						successfullSwaps0 = Integer.parseInt(Spltstr[1]);
 					else if (Spltstr[0].contentEquals("deltaTemperature"))
 						deltaTemperature = Double.parseDouble(Spltstr[1]);
-					// else if (Spltstr[0].contentEquals("lastSwaps")) {
-					//	String[] tmp = Spltstr[1].replaceAll("\\[", "").replaceAll("\\]", "").replaceAll("\\s", "").split(",");
-						// acceptedSwaps = new ArrayList<>();
-						//for (int j = 0; j < tmp.length; j++)
-							// acceptedSwaps.add(Boolean.parseBoolean(tmp[j]));
-					//}					
+					else if (Spltstr[0].startsWith("beta_chain")) {
+						int chainNr = Integer.parseInt(Spltstr[0].substring(10));
+						chains[chainNr].setChainNr(chainNr);
+						double beta = Double.parseDouble(Spltstr[1]);
+						chains[chainNr].setBeta(beta);
+						c[chainNr] = Double.parseDouble(Spltstr[2]);
+						chainCount[chainNr] = Integer.parseInt(Spltstr[3]);
+					}
 				}
 				int delta = operatorsInput.get().size();
 				for (int i = 0; i < chains.length; i++) {
@@ -587,10 +564,9 @@ public class SerialMCMC extends MCMC {
 		
 		startLogTime = -1;
 		long startSample = 0;
-		int [] chainCount = new int[chains.length];
 		
 		// print header for system output
-		System.out.println("sample\tchain nr\tswapsColdCain\tswapProbability\tdeltaTemperature");		
+		System.out.print("sample\tchain nr\tswapsColdCain\tswapProbability\tdeltaTemperature");		
 		double currProb = ((double) successfullSwaps/totalSwaps);
 		if (Double.isNaN(currProb))
 			currProb = 0.0;
@@ -646,6 +622,10 @@ public class SerialMCMC extends MCMC {
 				
 				// swap loggers and the state file names
 				//swapLoggers(chains[i], chains[j]);				
+				for (CoupledLogger logger : chains[0].loggers) {
+					logger.setSuppressLogging(neighbour != 0);
+				}
+				
 				
 				// swap Operator tuning
 				//swapOperatorTuning(chains[i], chains[j]);
@@ -805,7 +785,8 @@ public class SerialMCMC extends MCMC {
 	        out.print("deltaTemperature=" + deltaTemperature + "\n");
 	
 	        for (int k = 0; k < chains.length; k++) {
-	        	out.print("beta_chain." + k + "=" + chains[k].getBeta() + "\n");
+	        	out.print("beta_chain " + chains[k].getChainNr() + "=" + chains[k].getBeta() + 
+	        			"=" + c[k] + "=" + chainCount[k] + "\n");
 	        }
 	        for (int k = 0; k < chains.length; k++) {
 	        	operatorStats[k].storeToFile(out);
