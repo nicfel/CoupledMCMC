@@ -30,7 +30,7 @@ import org.json.JSONObject;
 import org.xml.sax.SAXException;
 
 		
-@Description("Serial temperaing aka umbrella sampling")
+@Description("Serial MCMC aka serial tempering aka simulated tempering aka umbrella sampling")
 @Citation("Geyer, C.J., 2011. Importance sampling, simulated tempering, and umbrella sampling. In Handbook of Markov Chain Monte Carlo (pp. 295-311). Chapman & Hall/CRC, Boca Raton.")
 public class SerialMCMC extends MCMC {
 	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", "number of chains to run in parallel (default 2)", 2);
@@ -68,13 +68,8 @@ public class SerialMCMC extends MCMC {
 	/** keep track of time taken between logs to estimate speed **/
     long startLogTime;
     
-    /** keeps track of the last n swaps and if they were accepted or not **/
-    // List<Boolean> acceptedSwaps;
-
 	// keep track of when threads finish in order to optimise thread usage
-	long [] finishTimes;
-		
-//	private ArrayList<Long>[] runTillIteration;
+//	long [] finishTimes;
 	
 	int totalSwaps = 0;
 	int successfullSwaps = 0, successfullSwaps0 = 0;
@@ -101,17 +96,6 @@ public class SerialMCMC extends MCMC {
 		
 		@Override
 		public void log(long sampleNr) {
-	        if ((sampleNr < 0) || (sampleNr % every > 0)) {
-	            return;
-	        }
-	        if (sampleOffset >= 0) {
-	            if (sampleNr == 0) {
-	                // don't need to duplicate the last line in the log
-	                return;
-	            }
-	            sampleNr += sampleOffset;
-	        }
-
 	        ByteArrayOutputStream baos = new ByteArrayOutputStream();
 	        PrintStream out = new PrintStream(baos);
 
@@ -215,7 +199,7 @@ public class SerialMCMC extends MCMC {
 		if (useBetaDistributionInput.get()) {
 			m_dist = new BetaDistributionImpl(1, deltaTemperature);
 			spacing = Spacing.Beta;
-		}else {
+		} else {
 			spacing = Spacing.Geometric;
 		}
 				
@@ -229,41 +213,6 @@ public class SerialMCMC extends MCMC {
 		for (int i = 0; i < chains.length; i++) {
 			operatorStats[i] = new OperatorStats(nrOfOperators);
 		}
-		
-		
-		
-//		XMLProducer p = new XMLProducer();
-//		String sXML = p.toXML(this, new ArrayList<>());
-//		
-//		// removes coupled MCMC parts of the xml		
-//		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("deltaTemperature=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("maxTemperature=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("optimise=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("logHeatedChains=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("optimizeDelay=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("neighbourSwapping=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("useBetaDistribution=['\"][^ ]*['\"]", "");
-//		sXML = sXML.replaceAll("spec=\"Logger\"", "");
-//		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
-//		sXML = sXML.replaceAll("</logger", "</coupledLogger");
-		
-		// check if the loggers have a same issue
-//        String sMCMCMC = this.getClass().getName();
-//		while (sMCMCMC.length() > 0) {
-//			sXML = sXML.replaceAll("\\b" + SerialMCMC.class.getName() + "\\b", HeatedChain.class.getName());
-//			if (sMCMCMC.indexOf('.') >= 0) {
-//				sMCMCMC = sMCMCMC.substring(sMCMCMC.indexOf('.') + 1);
-//			} else {
-//				sMCMCMC = "";
-//			}
-//		}
 			
 		chains[0] = new HeatedChain() {
 			
@@ -285,7 +234,6 @@ public class SerialMCMC extends MCMC {
 
 		        if (restoreFromFile) {
 		            state.restoreFromFile();
-//		            operatorSchedule.restoreFromFile();
 		            burnIn = 0;
 		            oldLogLikelihood = state.robustlyCalcPosterior(posterior);
 		        } else {
@@ -296,9 +244,7 @@ public class SerialMCMC extends MCMC {
 		                oldLogLikelihood = state.robustlyCalcPosterior(posterior);
 		                nInitialisationAttempts += 1;
 		            } while (Double.isInfinite(oldLogLikelihood) && nInitialisationAttempts < numInitializationAttempts.get());
-		        }
-		        // final long startTime = System.currentTimeMillis();
-		        
+		        }		        
 
 		        // do the sampling
 		        logAlpha = 0;
@@ -320,33 +266,12 @@ public class SerialMCMC extends MCMC {
 		                return o2.isLoggingToStdout() ? -1 : 0;
 		            }
 		        });
-		        // warn if none of the loggers is to stdout, so no feedback is given on screen
-		        boolean hasStdOutLogger = false;
-		        boolean hasScreenLog = false;
-		        for (CoupledLogger l : loggers) {
-		        	if (l.isLoggingToStdout()) {
-		        		hasStdOutLogger = true;
-		        	}
-		        	if (l.getID() != null && l.getID().equals("screenlog")) {
-		        		hasScreenLog = true;
-		        	}
-		        }
-		        if (!hasStdOutLogger) {
-		        	Log.warning.println("WARNING: If nothing seems to be happening on screen this is because none of the loggers give feedback to screen.");
-		        	if (hasScreenLog) {
-		        		Log.warning.println("WARNING: This happens when a filename  is specified for the 'screenlog' logger.");
-		        		Log.warning.println("WARNING: To get feedback to screen, leave the filename for screenlog blank.");
-		        		Log.warning.println("WARNING: Otherwise, the screenlog is saved into the specified file.");
-		        	}
-		        }
 
 		        // initialises log such that log file headers are written, etc.
 		        for (final Logger log : loggers) {
 		            log.init();
 		        }
-		        
-//		        Randomizer = new Randomizer();
-		                
+		        		                
 		    } // run;
 		  
 			
@@ -370,7 +295,6 @@ public class SerialMCMC extends MCMC {
 		                    Log.err.println("At sample " + sampleNr + "\nPosterior incorrectly calculated: " + originalLogP + " != " + logLikelihood
 		                    		+ "(" + (originalLogP - logLikelihood) + ")"
 		                            + " Operator: " + operator.getClass().getName());
-//		                    System.exit(0);
 		                }
 		                if (sampleNr > NR_OF_DEBUG_SAMPLES * 3) {
 		                    // switch off debug mode once a sufficient large sample is checked
@@ -427,7 +351,8 @@ public class SerialMCMC extends MCMC {
 				coupledLogger.initByName("logEvery", logger.everyInput.get(),
 						"log", logger.loggersInput.get(),
 						"fileName", logger.fileNameInput.get(),
-						"mode", logger.modeInput.get()
+						"mode", logger.modeInput.get(),
+						"sanitiseHeaders", logger.sanitiseHeadersInput.get()
 						);
 				coupledLogger.setID(logger.getID());
 				coupledLoggers.add(coupledLogger);
@@ -470,13 +395,9 @@ public class SerialMCMC extends MCMC {
 			chains[i].setTemperature(i, getTemperature(i));
 			chains[i].setChainNr(i);
 		}
-		// ensure that each chain has the same starting point
-		// threads = new Thread[chains.length];
-		finishTimes = new long[chains.length];
 		
 
 		chainLength = chainLengthInput.get();
-		
 		
 		if (restoreFromFile){
 			System.out.println("restoring from file, printing to screen but not to loggers will start again from 0");
@@ -494,7 +415,6 @@ public class SerialMCMC extends MCMC {
 			try {
 				beta = 1-m_dist.cumulativeProbability(i/(double) chains.length);
 			} catch (MathException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			return 1/beta -1;
@@ -543,7 +463,6 @@ public class SerialMCMC extends MCMC {
 						" successfullSwaps0=" + successfullSwaps0 +
 						" deltaTemperature=" + deltaTemperature);
 			} catch (SAXException|IOException|ParserConfigurationException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
@@ -572,9 +491,8 @@ public class SerialMCMC extends MCMC {
 			currProb = 0.0;
 		try {
 			screenlog.init();
-			System.out.print("\t" + (startSample + sampleOffset) + "\t" + Arrays.toString(chainCount) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature);
+//			System.out.print("\t" + (startSample + sampleOffset) + "\t" + Arrays.toString(chainCount) + "\t" + successfullSwaps0 + "\t" + currProb + "\t" + deltaTemperature);
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
 
@@ -599,10 +517,13 @@ public class SerialMCMC extends MCMC {
 			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
 			double p2after = chains[i].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
 			
-			double logAlpha = chain_i == 0 || chain_i == chains.length-1 ? -Math.log(0.5) : 0;
-			logAlpha += neighbour == 0 || neighbour == chains.length-1 ? Math.log(0.5) : 0;
+			double logAlpha = chain_i == 0 || chain_i == chains.length-1 ? -Math.log(2) : 0;
+			logAlpha += neighbour == 0 || neighbour == chains.length-1 ? Math.log(2) : 0;
 			logAlpha += (p1after - p2after); 
 			logAlpha += c[chain_i] - c[neighbour];
+			if (chainCount[chain_i] > 100 && chainCount[neighbour] > 100) {
+				logAlpha += Math.log(chainCount[chain_i]) - Math.log(chainCount[neighbour]);
+			}
 						
 			if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
 				successfullSwaps++;
@@ -621,14 +542,11 @@ public class SerialMCMC extends MCMC {
 				chains[j].setChainNr(chainNr);
 				
 				// swap loggers and the state file names
-				//swapLoggers(chains[i], chains[j]);				
 				for (CoupledLogger logger : chains[0].loggers) {
 					logger.setSuppressLogging(neighbour != 0);
 				}
 				
-				
 				// swap Operator tuning
-				//swapOperatorTuning(chains[i], chains[j]);
 				operatorStats[chain_i].store(operatorsInput.get());
 				operatorStats[neighbour].restore(operatorsInput.get());
 								
@@ -659,7 +577,7 @@ public class SerialMCMC extends MCMC {
 			if (sampleNr < chainLength) {
 				chains[0].currentSample = sampleNr + 1;
 				try {
-					finishTimes[0] = chains[0].runTillResample(sampleNr+resampleEvery);
+					chains[0].runTillResample(sampleNr+resampleEvery);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -711,66 +629,7 @@ public class SerialMCMC extends MCMC {
 		System.err.println("#Successfull swaps = " + successfullSwaps);
 		System.err.println("#Successfull swaps with cold chain = " + successfullSwaps0);
 	}
-	
-
-//	/* swaps the states of mcmc1 and mcmc2 */
-//	void swapLoggers(HeatedChain mcmc1, HeatedChain mcmc2) {
-//		int mcmc2size = mcmc2.coupledLoggersInput.get().size();
-//		int mcmc1size = mcmc1.coupledLoggersInput.get().size();
-//		
-//		for (int i = 0; i < mcmc2size; i++){
-//			for (int j = 0; j < mcmc1size; j++){
-//				if (mcmc2.coupledLoggersInput.get().get(i).getID().contentEquals(mcmc1.coupledLoggersInput.get().get(j).getID())){
-//					boolean suppressLogging1 = mcmc1.coupledLoggersInput.get().get(i).getSuppressLogging();
-//					boolean suppressLogging2 = mcmc2.coupledLoggersInput.get().get(j).getSuppressLogging();
-//					
-//					mcmc1.coupledLoggersInput.get().get(i).setSuppressLogging(suppressLogging2);
-//					mcmc2.coupledLoggersInput.get().get(j).setSuppressLogging(suppressLogging1);
-//
-//					PrintStream printstream2 = mcmc2.coupledLoggersInput.get().get(i).getM_out();
-//					PrintStream printstream1 = mcmc1.coupledLoggersInput.get().get(j).getM_out();
-//										
-//					mcmc2.coupledLoggersInput.get().get(i).setM_out(printstream1);
-//					mcmc1.coupledLoggersInput.get().get(j).setM_out(printstream2);
-//				}					
-//			}			
-//		}		
-//				
-//		// swap the state file Names as well
-//		String stateFileName1 = mcmc1.getStateFileName();
-//		mcmc1.setStateFileName(mcmc2.getStateFileName());
-//		mcmc2.setStateFileName(stateFileName1);		
-//	}
-//
-//	void swapOperatorTuning(HeatedChain mcmc1, HeatedChain mcmc2) {
-//		List<Operator> operatorList1 = new ArrayList<Operator>();
-//		List<Operator> operatorList2 = new ArrayList<Operator>();		
-//		
-//		operatorList1 = mcmc1.getOperatorSchedule().operatorsInput.get();
-//		operatorList2 = mcmc2.getOperatorSchedule().operatorsInput.get();
-//		
-//		
-//		for (int i = 0; i < operatorList1.size(); i++){
-//			Operator operator1 = operatorList1.get(i);
-//			Operator operator2 = operatorList2.get(i);
-//
-//		    int m_nNrRejected = operator1.get_m_nNrRejected();
-//		    int m_nNrAccepted = operator1.get_m_nNrAccepted();
-//		    int m_nNrRejectedForCorrection = operator1.get_m_nNrRejectedForCorrection();
-//		    int m_nNrAcceptedForCorrection = operator1.get_m_nNrAcceptedForCorrection();
-//		    
-//		    operator1.setAcceptedRejected(operator2.get_m_nNrRejected(), operator2.get_m_nNrAccepted(), operator2.get_m_nNrRejectedForCorrection(), operator2.get_m_nNrAcceptedForCorrection());
-//		    operator2.setAcceptedRejected(m_nNrAccepted, m_nNrRejected, m_nNrAcceptedForCorrection, m_nNrRejectedForCorrection);
-//		    
-//		    
-//		    double coercableParameterValue = operator1.getCoercableParameterValue();
-//		    operator1.setCoercableParameterValue(operator2.getCoercableParameterValue());
-//		    operator2.setCoercableParameterValue(coercableParameterValue);
-//			
-//		}		
-//	}
-	
-	
+		
 	void storeStateToFile(long currentSample) throws FileNotFoundException {
         PrintStream out;
 		try {
@@ -786,7 +645,7 @@ public class SerialMCMC extends MCMC {
 	
 	        for (int k = 0; k < chains.length; k++) {
 	        	out.print("beta_chain " + chains[k].getChainNr() + "=" + chains[k].getBeta() + 
-	        			"=" + c[k] + "=" + chainCount[k] + "\n");
+	        			"=" + c[chains[k].getChainNr()] + "=" + chainCount[chains[k].getChainNr()] + "\n");
 	        }
 	        for (int k = 0; k < chains.length; k++) {
 	        	operatorStats[k].storeToFile(out);
@@ -800,7 +659,6 @@ public class SerialMCMC extends MCMC {
 	        // newStateFile.renameTo(oldStateFile); -- unstable under windows
 	        Files.move(newStateFile.toPath(), oldStateFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
