@@ -514,12 +514,12 @@ public class SerialMCMC extends MCMC {
 			}
 			
 			// robust calculations can be extremely expensive, just calculate the new probs instead 
-			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-			double p2after = chains[i].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			double p2after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
 			
 			double logAlpha = chain_i == 0 || chain_i == chains.length-1 ? -Math.log(2) : 0;
 			logAlpha += neighbour == 0 || neighbour == chains.length-1 ? Math.log(2) : 0;
-			logAlpha += (p1after - p2after); 
+			logAlpha += (p2after - p1after); 
 			logAlpha += c[chain_i] - c[neighbour];
 			if (chainCount[chain_i] > 100 && chainCount[neighbour] > 100) {
 				logAlpha += Math.log(chainCount[chain_i]) - Math.log(chainCount[neighbour]);
@@ -527,7 +527,7 @@ public class SerialMCMC extends MCMC {
 						
 			if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
 				successfullSwaps++;
-				if (i == 0) {
+				if (chain_i == 0) {
 					successfullSwaps0++;
 				}
 
@@ -592,7 +592,7 @@ public class SerialMCMC extends MCMC {
 			if (logCounter == logCounterInput.get()) {
 				System.out.print("\t" + (sampleNr + sampleOffset) + "\t" + Arrays.toString(chainCount) + "\t" +
 //						Arrays.toString(c) + "\t" + 
-						successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + " ");
+						successfullSwaps0 + "\t" + ((double) successfullSwaps/totalSwaps) + "\t" + deltaTemperature + "\t");
 				screenlog.log(0);
 				logCounter = 0;
 				if (startLogTime>0){			
