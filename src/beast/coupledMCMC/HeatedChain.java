@@ -60,13 +60,16 @@ public class HeatedChain extends MCMC {
 
 
 	protected double getCurrentLogLikelihood() {
-		return oldLogLikelihood * beta;
+		return oldLogLikelihood * this.beta;
 	}
 	
-	protected double getUnscaledCurrentLogLikelihood() {
-		return oldLogLikelihood;
-	}
+//	protected double getUnscaledCurrentLogLikelihood() {
+//		return oldLogLikelihood;
+//	}
 
+	protected double getScaledLogLikelihood(double beta) {
+		return oldLogLikelihood * beta;
+	}
 	
 	protected void setResampleEvery(int resampleEvery) {
 		this.resampleEvery = resampleEvery;

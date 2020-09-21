@@ -1,6 +1,8 @@
 package beast.coupledMCMC;
 
 
+
+
 import beast.app.beauti.BeautiDoc;
 import beast.core.*;
 import beast.core.Citation.Citations;
@@ -16,7 +18,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.math.MathException;
@@ -61,6 +62,8 @@ public class CoupledMCMC extends MCMC {
 	public Input<Boolean> neighbourSwappingInput = new Input<>("neighbourSwapping","if true, only chains that are next to each other are swapped", false);
 
 	public Input<Boolean> useBetaDistributionInput = new Input<>("useBetaDistribution","if true, the spacing between chains is assumed to be for the quantiles of a beta distribution with alpha=1 and beta=tuneable", false);
+
+	public Input<Boolean> heatLikelihoodOnlyInput = new Input<>("heatLikelihoodOnly", "if true, samples log(prior) + beta * log(likelihood) instead of the default beta * (log(prior) + log(likelihood))", false);
 
 	// nr of samples between re-arranging states
 	int resampleEvery;	
@@ -144,6 +147,7 @@ public class CoupledMCMC extends MCMC {
 		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("neighbourSwapping=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceAll("heatLikelihoodOnly=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("useBetaDistribution=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("spec=\"Logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
@@ -152,7 +156,10 @@ public class CoupledMCMC extends MCMC {
 		// check if the loggers have a same issue
         String sMCMCMC = this.getClass().getName();
 		while (sMCMCMC.length() > 0) {
-			sXML = sXML.replaceAll("\\b" + CoupledMCMC.class.getName() + "\\b", HeatedChain.class.getName());
+			sXML = sXML.replaceAll("\\b" + CoupledMCMC.class.getName() + "\\b",
+					heatLikelihoodOnlyInput.get()
+						? HeatedChainLikelihoodOnly.class.getName()
+						: HeatedChain.class.getName());
 			if (sMCMCMC.indexOf('.') >= 0) {
 				sMCMCMC = sMCMCMC.substring(sMCMCMC.indexOf('.') + 1);
 			} else {
@@ -168,7 +175,7 @@ public class CoupledMCMC extends MCMC {
 				sXML2 = sXML2.replaceAll("fileName=\"", "fileName=\"chain" + i+ "");
 			}
 			
-			try {
+			try {				
 				chains[i] = (HeatedChain) parser.parseFragment(sXML2, true);
 	
 				// remove all screen loggers
@@ -370,8 +377,10 @@ public class CoupledMCMC extends MCMC {
 			double p2before = chains[j].getCurrentLogLikelihood();
 
 			// robust calculations can be extremely expensive, just calculate the new probs instead 
-			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-			double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			//double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
+			//double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			double p1after = chains[i].getScaledLogLikelihood(chains[j].getBeta());
+			double p2after = chains[j].getScaledLogLikelihood(chains[i].getBeta());
 			
 			double logAlpha = (p1after + p2after) - (p1before  + p2before);
 			if (Math.exp(logAlpha) > Randomizer.nextDouble()) {
@@ -551,8 +560,10 @@ public class CoupledMCMC extends MCMC {
 			double p2before = chains[j].getCurrentLogLikelihood();
 
 			// robust calculations can be extremly expensive, just calculate the new probs instead 
-			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-			double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			//double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
+			//double p2after = chains[j].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			double p1after = chains[i].getScaledLogLikelihood(chains[j].getBeta());
+			double p2after = chains[j].getScaledLogLikelihood(chains[i].getBeta());
 			
 			double logAlpha = (p1after + p2after) - (p1before  + p2before);
 			if (Math.exp(logAlpha) > Randomizer.nextDouble()) {

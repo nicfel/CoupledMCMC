@@ -514,9 +514,11 @@ public class SerialMCMC extends MCMC {
 			}
 			
 			// robust calculations can be extremely expensive, just calculate the new probs instead 
-			double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
-			double p2after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
-			
+			//double p1after = chains[i].getUnscaledCurrentLogLikelihood() * chains[i].getBeta();
+			//double p2after = chains[i].getUnscaledCurrentLogLikelihood() * chains[j].getBeta();
+			double p1after = chains[i].getScaledLogLikelihood(chains[j].getBeta());
+			double p2after = chains[i].getScaledLogLikelihood(chains[j].getBeta());
+
 			double logAlpha = chain_i == 0 || chain_i == chains.length-1 ? -Math.log(2) : 0;
 			logAlpha += neighbour == 0 || neighbour == chains.length-1 ? Math.log(2) : 0;
 			logAlpha += (p2after - p1after); 
@@ -560,7 +562,7 @@ public class SerialMCMC extends MCMC {
 					// Keeps on updating unlike the scheme in:
 					// Park, S. and Pande, V.S., 2007. Choosing weights for simulated tempering. Physical Review E, 76(1), p.016703.
 					// DOI: 10.1103/PhysRevE.76.016703
-					double logP = chains[0].getUnscaledCurrentLogLikelihood();
+					double logP = chains[0].getScaledLogLikelihood(1.0);
 					if (c[0] == 0) {
 						for (int k = 0; k < chains.length; k++) {
 							c[chains[k].getChainNr()] = logP * chains[k].getBeta(); 

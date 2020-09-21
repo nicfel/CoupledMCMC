@@ -105,7 +105,7 @@ public class RemoteMC3Server extends Runnable {
 						line = getOperatorParameters();
 						out.writeUTF(line);
 					} else if (line.startsWith("getu")) {						
-						out.writeUTF(mc3.getUnscaledCurrentLogLikelihood() + "");
+						out.writeUTF(mc3.getScaledLogLikelihood(1.0) + "");
 					} else if (line.startsWith("seto")) {
 						setOperatorParameters(line);
 						out.writeUTF("operators updates");
