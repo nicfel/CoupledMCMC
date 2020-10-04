@@ -89,6 +89,14 @@ public class HeatedChain extends MCMC {
 		this.beta = beta;		
 	}	
 	
+	 /**
+     * Is this chain a cold chain (with temperature 0) ?
+     * @return
+     */
+    public boolean isColdChain() {
+        return this.beta == 1.0;
+    }
+
 	protected int getChainNr(){
 		return chainNr;
 	}	
