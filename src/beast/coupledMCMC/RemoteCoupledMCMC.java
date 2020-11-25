@@ -162,21 +162,21 @@ public class RemoteCoupledMCMC extends MCMC {
 		}
 		
 		// removes coupled MCMC parts of the xml		
-		sXML = sXML.replaceAll("hosts=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("ports=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("loggerport=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("deltaTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("maxTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimise=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("logHeatedChains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimizeDelay=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("hosts=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("ports=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("loggerport=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("chains=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("resampleEvery=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("tempDir=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("deltaTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("maxTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("optimise=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("logHeatedChains=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("optimizeDelay=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("optimizeEvery=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("nrExchanges=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("preSchedule=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("target=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("spec=\"Logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.RemoteCoupledLogger\" host=\"" + loggerHost + "\" port=\"" + loggerportInput.get() + "\" ");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");

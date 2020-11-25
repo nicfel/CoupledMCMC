@@ -134,21 +134,21 @@ public class CoupledMCMC extends MCMC {
 		String sXML = p.toXML(this, new ArrayList<>());
 		
 		// removes coupled MCMC parts of the xml		
-		sXML = sXML.replaceAll("chains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("resampleEvery=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("tempDir=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("deltaTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("maxTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimise=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("logHeatedChains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimizeDelay=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("optimizeEvery=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("nrExchanges=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("preSchedule=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("target=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("neighbourSwapping=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("heatLikelihoodOnly=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("useBetaDistribution=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("chains=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("resampleEvery=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("tempDir=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("deltaTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("maxTemperature=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("optimise=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("logHeatedChains=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("optimizeDelay=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("optimizeEvery=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("nrExchanges=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("preSchedule=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("target=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("neighbourSwapping=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("heatLikelihoodOnly=['\"][^ ]*['\"]", "");
+		sXML = sXML.replaceFirst("useBetaDistribution=['\"][^ ]*['\"]", "");
 		sXML = sXML.replaceAll("spec=\"Logger\"", "");
 		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.CoupledLogger\"");
 		sXML = sXML.replaceAll("</logger", "</coupledLogger");
