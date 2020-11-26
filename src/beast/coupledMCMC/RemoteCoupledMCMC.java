@@ -152,7 +152,7 @@ public class RemoteCoupledMCMC extends MCMC {
 	
 	private void initRun(){
 		XMLProducer p = new XMLProducer();
-		String sXML = p.toXML(this, new ArrayList<>());
+		//String sXML = p.toXML(this, new ArrayList<>());
 		
 		String loggerHost = "localhost";
 		try {
@@ -161,25 +161,45 @@ public class RemoteCoupledMCMC extends MCMC {
 			e1.printStackTrace();
 		}
 		
-		// removes coupled MCMC parts of the xml		
-		sXML = sXML.replaceFirst("hosts=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("ports=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("loggerport=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("chains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("resampleEvery=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("tempDir=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("deltaTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("maxTemperature=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("optimise=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("logHeatedChains=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("optimizeDelay=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("optimizeEvery=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("nrExchanges=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("preSchedule=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceFirst("target=['\"][^ ]*['\"]", "");
-		sXML = sXML.replaceAll("spec=\"Logger\"", "");
-		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.RemoteCoupledLogger\" host=\"" + loggerHost + "\" port=\"" + loggerportInput.get() + "\" ");
-		sXML = sXML.replaceAll("</logger", "</coupledLogger");
+		List<RemoteCoupledLogger> coupledLoggers = new ArrayList<>();
+		for (Logger logger : loggersInput.get()) {
+			if (logger.fileNameInput.get() != null) {
+				RemoteCoupledLogger coupledLogger = new RemoteCoupledLogger(logger);
+				coupledLoggers.add(coupledLogger);
+			}			
+		}
+		
+		HeatedChain heated = new HeatedChain();
+		heated.initByName("distribution", posteriorInput.get(), 
+				"operator", operatorsInput.get(),
+				"state", startStateInput.get(),
+				"init", initialisersInput.get(),
+				"chainLength", chainLengthInput.get(),
+				"storeEvery", storeEveryInput.get(),
+				"numInitializationAttempts", numInitializationAttempts.get(),
+				"coupledLogger", coupledLoggers
+				);
+		String sXML = p.toXML(heated, new ArrayList<>());
+
+//		// removes coupled MCMC parts of the xml		
+//		sXML = sXML.replaceFirst("hosts=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("ports=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("loggerport=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("chains=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("resampleEvery=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("tempDir=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("deltaTemperature=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("maxTemperature=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("optimise=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("logHeatedChains=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("optimizeDelay=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("optimizeEvery=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("nrExchanges=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("preSchedule=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceFirst("target=['\"][^ ]*['\"]", "");
+//		sXML = sXML.replaceAll("spec=\"Logger\"", "");
+//		sXML = sXML.replaceAll("<logger", "<coupledLogger spec=\"beast.coupledMCMC.RemoteCoupledLogger\" host=\"" + loggerHost + "\" port=\"" + loggerportInput.get() + "\" ");
+//		sXML = sXML.replaceAll("</logger", "</coupledLogger");
 		
 		// check if the loggers have a same issue
         String sMCMCMC = this.getClass().getName();

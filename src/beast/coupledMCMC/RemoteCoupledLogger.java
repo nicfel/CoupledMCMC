@@ -13,6 +13,7 @@ import beast.core.BEASTObject;
 import beast.core.Description;
 import beast.core.Input;
 import beast.core.Input.Validate;
+import beast.core.Logger;
 import beast.core.util.Log;
 
 @Description("Logger for CoupledMCMC that logs via a RemoteLoggerService")
@@ -23,6 +24,11 @@ public class RemoteCoupledLogger extends CoupledLogger {
 	private Socket socket = null;
 	private DataOutputStream out = null;
 
+	public RemoteCoupledLogger(Logger other) {
+		super(other);
+	}
+	
+	
 	@Override
 	public void initAndValidate() {
 

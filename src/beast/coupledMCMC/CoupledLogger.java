@@ -7,6 +7,19 @@ import beast.core.Logger;
 
 public class CoupledLogger extends Logger {
 	
+	public CoupledLogger(Logger other) {
+		loggersInput.setValue(other.loggersInput.get(), this);
+		fileNameInput.setValue(other.fileNameInput.get(), this);
+		everyInput.setValue(other.everyInput.get(), this);
+		modelInput.setValue(other.modelInput.get(), this);
+		modeInput.setValue(other.modeInput.get(), this);
+		sortModeInput.setValue(other.sortModeInput.get(), this);
+		sanitiseHeadersInput.setValue(other.sanitiseHeadersInput.get(), this);
+	}
+
+	public CoupledLogger() {
+	}
+	
 	boolean suppressLogging = false;
 	
     public void setM_out(PrintStream m_out_alt) {
