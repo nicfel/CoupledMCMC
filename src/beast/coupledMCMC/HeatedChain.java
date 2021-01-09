@@ -112,6 +112,7 @@ public class HeatedChain extends MCMC {
 	protected void setStateFileName(String stateFileName){
 		this.stateFileName = stateFileName;
 		state.setStateFileName(stateFileName);
+		operatorSchedule.setStateFileName(stateFileName);
 	}
 
 	
