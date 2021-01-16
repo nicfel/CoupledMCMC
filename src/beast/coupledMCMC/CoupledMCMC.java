@@ -52,6 +52,8 @@ public class CoupledMCMC extends MCMC {
 	public Input<Double> maxTemperatureInput = new Input<>("maxTemperature","maximal temperature of the hottest chain");	
 	public Input<Boolean> logHeatedChainsInput = new Input<>("logHeatedChains","if true, log files for heated chains are also printed", false);
 	
+	public Input<Double> maxAdaptationInput = new Input<>("maxAdaptation","maximal step size for adapting the temperature", 0.001);	
+
 	// Input on whether the temperature between chains should be optimized
 	public Input<Boolean> optimiseInput = new Input<>("optimise","if true, the temperature is automatically optimised to reach a target acceptance probability", true);
 	
@@ -141,15 +143,28 @@ public class CoupledMCMC extends MCMC {
 		}
 		
 		HeatedChain heated = new HeatedChain();
-		heated.initByName("distribution", posteriorInput.get(), 
-				"operator", operatorsInput.get(),
-				"state", startStateInput.get(),
-				"init", initialisersInput.get(),
-				"chainLength", chainLengthInput.get(),
-				"storeEvery", storeEveryInput.get(),
-				"numInitializationAttempts", numInitializationAttempts.get(),
-				"coupledLogger", coupledLoggers
-				);
+		if (initialisersInput.get().size()==0)
+			heated.initByName(
+					"distribution", posteriorInput.get(), 
+					"operator", operatorsInput.get(),
+					"state", startStateInput.get(),
+					"chainLength", chainLengthInput.get(),
+					"storeEvery", storeEveryInput.get(),
+					"numInitializationAttempts", numInitializationAttempts.get(),
+					"coupledLogger", coupledLoggers
+					);
+		else
+			heated.initByName(
+					"distribution", posteriorInput.get(), 
+					"operator", operatorsInput.get(),
+					"state", startStateInput.get(),
+					"init", initialisersInput.get(),
+					"chainLength", chainLengthInput.get(),
+					"storeEvery", storeEveryInput.get(),
+					"numInitializationAttempts", numInitializationAttempts.get(),
+					"coupledLogger", coupledLoggers
+					);
+
 		String sXML = p.toXML(heated, new ArrayList<>());
 
 //		String sXML = p.toXML(this, new ArrayList<>());
@@ -867,12 +882,11 @@ public class CoupledMCMC extends MCMC {
 		double delta = (p - target) / swapsTransformed;
 		
 		// prevent too large adaptions that lead to overshooting
-		double maxstep = 1.0/(optimiseDelayInput.get()*10.0);
 		
-		if (delta>maxstep)
-			delta = maxstep;
-		if (delta<-maxstep)
-			delta = -maxstep;
+		if (delta>maxAdaptationInput.get())
+			delta = maxAdaptationInput.get();
+		if (delta<-maxAdaptationInput.get())
+			delta = -maxAdaptationInput.get();
 		
 		
 		return delta;
