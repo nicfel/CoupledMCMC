@@ -462,7 +462,7 @@ public class CoupledMCMC extends MCMC {
 	            
 	            // boundary case checks
 	    		if (maxTemperatureInput.get() != null){
-	    			deltaTemperature = Math.max(deltaTemperature, maxTemperatureInput.get()/(chains.length-1)); 
+	    			deltaTemperature = Math.min(deltaTemperature, maxTemperatureInput.get()/(chains.length-1)); 
 	            } else if (deltaTemperature < 0) {
 	            	deltaTemperature = 0;
 	            }
