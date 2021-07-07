@@ -25,9 +25,10 @@ import org.apache.commons.math.distribution.BetaDistributionImpl;
 
 @Citations(
 		{
-		@Citation(value= "Müller, Nicola Felix, and Remco Bouckaert. Coupled MCMC in BEAST 2. bioRxiv (2019): 603514. ", 
-				year = 2019, firstAuthorSurname = "Müller",
-				DOI="10.1101/603514"),
+		@Citation(value= "Müller, Nicola Felix, and Remco Bouckaert. Adaptive Metropolis-coupled MCMC for BEAST 2.\n" + 
+				"PeerJ 8:e9473 ", 
+				year = 2020, firstAuthorSurname = "Müller",
+				DOI="10.7717/peerj.9473"),
 		@Citation(value="Bouckaert, Remco, Timothy G. Vaughan, Joëlle Barido-Sottani, Sebastián Duchêne, \n"
 				+ "  Mathieu Fourment, Alexandra Gavryushkina, Joseph Heled et al. \n"
 				+ "  BEAST 2.5: An advanced software platform for Bayesian evolutionary analysis. \n"
