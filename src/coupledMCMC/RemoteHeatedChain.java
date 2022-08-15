@@ -1,4 +1,4 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -6,8 +6,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
 
-import beast.core.Description;
-import beast.core.util.Log;
+import beast.base.core.Description;
+import beast.base.core.Log;
 
 @Description("Local representation of heated chain running on a remote machine")
 public class RemoteHeatedChain {

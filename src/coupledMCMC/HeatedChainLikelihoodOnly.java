@@ -1,11 +1,11 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
-import beast.core.BEASTInterface;
-import beast.core.Description;
-import beast.core.Distribution;
-import beast.core.Operator;
-import beast.core.util.Evaluator;
-import beast.util.Randomizer;
+import beast.base.core.BEASTInterface;
+import beast.base.core.Description;
+import beast.base.inference.Distribution;
+import beast.base.inference.Operator;
+import beast.base.inference.Evaluator;
+import beast.base.util.Randomizer;
 
 @Description("Like heated chain, but samples log(prior) + beta * log(likelihood) "
 		   + "instead of beta * (log(prior) + log(likelihood))")
@@ -58,7 +58,7 @@ public class HeatedChainLikelihoodOnly extends HeatedChain {
      * Perform a single MCMC propose+accept/reject step.
      *
      * @param sampleNr the index of the current MCMC step
-     * @return the selected {@link beast.core.Operator}
+     * @return the selected {@link beast.base.inference.Operator}
      */
 	@Override
     protected Operator propagateState(final long sampleNr) {

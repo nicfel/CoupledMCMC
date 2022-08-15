@@ -1,11 +1,20 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 
 
-import beast.app.beauti.BeautiDoc;
-import beast.core.*;
-import beast.core.util.Log;
-import beast.util.Randomizer;
+
+import beastfx.app.inputeditor.BeautiDoc;
+import beast.base.core.BEASTObject;
+import beast.base.core.Citation;
+import beast.base.core.Description;
+import beast.base.core.Input;
+import beast.base.core.Log;
+import beast.base.core.Loggable;
+import beast.base.inference.Logger;
+import beast.base.inference.MCMC;
+import beast.base.inference.Operator;
+import beast.base.inference.StateNodeInitialiser;
+import beast.base.util.Randomizer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;

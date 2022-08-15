@@ -1,15 +1,18 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 
-import beast.app.beauti.BeautiDoc;
-import beast.core.*;
-import beast.core.Citation.Citations;
-import beast.core.Input.Validate;
-import beast.core.util.Log;
-import beast.util.HeapSort;
-import beast.util.Randomizer;
-import beast.util.XMLParser;
-import beast.util.XMLProducer;
+import beastfx.app.inputeditor.BeautiDoc;
+import beast.base.core.Citation;
+import beast.base.core.Description;
+import beast.base.core.Input;
+import beast.base.core.Citation.Citations;
+import beast.base.core.Input.Validate;
+import beast.base.inference.Logger;
+import beast.base.inference.MCMC;
+import beast.base.core.Log;
+import beast.base.util.HeapSort;
+import beast.base.util.Randomizer;
+import beast.base.parser.XMLProducer;
 
 import java.io.File;
 import java.io.FileNotFoundException;

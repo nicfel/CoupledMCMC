@@ -1,4 +1,4 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -9,12 +9,12 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 
-import beast.core.BEASTObject;
-import beast.core.Description;
-import beast.core.Input;
-import beast.core.Input.Validate;
-import beast.core.Logger;
-import beast.core.util.Log;
+import beast.base.core.BEASTObject;
+import beast.base.core.Description;
+import beast.base.core.Input;
+import beast.base.core.Input.Validate;
+import beast.base.inference.Logger;
+import beast.base.core.Log;
 
 @Description("Logger for CoupledMCMC that logs via a RemoteLoggerService")
 public class RemoteCoupledLogger extends CoupledLogger {

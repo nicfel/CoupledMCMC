@@ -1,4 +1,4 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 import java.io.DataInputStream;
 import java.io.EOFException;
@@ -11,7 +11,7 @@ import java.net.Socket;
 import java.util.HashSet;
 import java.util.Set;
 
-import beast.core.util.Log;
+import beast.base.core.Log;
 
 public class RemoteLoggerServer {
 

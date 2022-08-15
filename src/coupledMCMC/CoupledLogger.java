@@ -1,10 +1,10 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 import java.io.IOException;
 import java.io.PrintStream;
 
-import beast.core.Description;
-import beast.core.Logger;
+import beast.base.core.Description;
+import beast.base.inference.Logger;
 
 @Description("Logger for MC3 that can be suppressed (useful for heated chains)")
 public class CoupledLogger extends Logger {

@@ -1,11 +1,19 @@
-package beast.coupledMCMC;
+package coupledMCMC;
 
 
-import beast.core.*;
-import beast.core.Citation.Citations;
-import beast.core.util.Evaluator;
-import beast.core.util.Log;
-import beast.util.Randomizer;
+import beast.base.core.Citation.Citations;
+import beast.base.inference.Distribution;
+import beast.base.inference.Evaluator;
+import beast.base.inference.Logger;
+import beast.base.inference.MCMC;
+import beast.base.inference.Operator;
+import beast.base.inference.OperatorSchedule;
+import beast.base.inference.StateNodeInitialiser;
+import beast.base.core.Citation;
+import beast.base.core.Description;
+import beast.base.core.Input;
+import beast.base.core.Log;
+import beast.base.util.Randomizer;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -14,7 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-//import beast.util.Randomizer;
+//import beast.base.util.Randomizer;
 
 @Citations(
 		{
@@ -290,7 +298,7 @@ public class HeatedChain extends MCMC {
      * Perform a single MCMC propose+accept/reject step.
      *
      * @param sampleNr the index of the current MCMC step
-     * @return the selected {@link beast.core.Operator}
+     * @return the selected {@link beast.base.inference.Operator}
      */
 	@Override
     protected Operator propagateState(final long sampleNr) {
