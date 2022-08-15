@@ -1,11 +1,25 @@
-<addon name="CoupledMCMC" version="1.1.0">
-  <depends on="beast2" atleast="2.6.0"/>
-  <!-- Add other dependencies as necessary. -->
+<addon name="CoupledMCMC" version="1.2.0">
+    <depends on='BEAST.base' atleast='2.7.0'/>
+    <depends on='BEAST.app' atleast='2.7.0'/>
   
-  <depends on='BEASTLabs' atleast='1.9.0'/>
   <packageapp description="MCMC to Coupled MCMC converter"
-              class="beast.coupledMCMC.MCMC2CoupledMCMC"
+              class="coupledMCMC.MCMC2CoupledMCMC"
               args=""
             />
+
+   <service type="beast.base.core.BEASTInterface">
+        <provider classname="coupledMCMC.CoupledLogger"/>
+        <provider classname="coupledMCMC.CoupledMCMC"/>
+        <provider classname="coupledMCMC.DummyLogger"/>
+        <provider classname="coupledMCMC.HeatedChain"/>
+        <provider classname="coupledMCMC.HeatedChainLikelihoodOnly"/>
+        <provider classname="coupledMCMC.MCMC2CoupledMCMC"/>
+        <provider classname="coupledMCMC.MultiCoupledMCMC"/>
+        <provider classname="coupledMCMC.RemoteCoupledLogger"/>
+        <provider classname="coupledMCMC.RemoteCoupledMCMC"/>
+        <provider classname="coupledMCMC.RemoteMC3Server"/>
+        <provider classname="coupledMCMC.SerialMCMC"/>
+        <provider classname="coupledMCMC.SubsampledTreeLikelihood"/>
+    </service>
 
 </addon>

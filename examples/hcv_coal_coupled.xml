@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><beast beautitemplate='Standard' beautistatus='' namespace="beast.core:beast.evolution.alignment:beast.evolution.tree.coalescent:beast.core.util:beast.evolution.nuc:beast.evolution.operators:beast.evolution.sitemodel:beast.evolution.substitutionmodel:beast.evolution.likelihood" required="" version="2.4">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><beast beautitemplate='Standard' beautistatus='' namespace="beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.alignment:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood" required="" version="2.4">
 
 
     <data
@@ -77,18 +77,18 @@ name="alignment">
 
 
 
-<map name="Uniform" >beast.math.distributions.Uniform</map>
-<map name="Exponential" >beast.math.distributions.Exponential</map>
-<map name="LogNormal" >beast.math.distributions.LogNormalDistributionModel</map>
-<map name="Normal" >beast.math.distributions.Normal</map>
-<map name="Beta" >beast.math.distributions.Beta</map>
-<map name="Gamma" >beast.math.distributions.Gamma</map>
-<map name="LaplaceDistribution" >beast.math.distributions.LaplaceDistribution</map>
-<map name="prior" >beast.math.distributions.Prior</map>
-<map name="InverseGamma" >beast.math.distributions.InverseGamma</map>
-<map name="OneOnX" >beast.math.distributions.OneOnX</map>
+<map name="Uniform" >beast.base.inference.distribution.Uniform</map>
+<map name="Exponential" >beast.base.inference.distribution.Exponential</map>
+<map name="LogNormal" >beast.base.inference.distribution.LogNormalDistributionModel</map>
+<map name="Normal" >beast.base.inference.distribution.Normal</map>
+<map name="Beta" >beast.base.inference.distribution.Beta</map>
+<map name="Gamma" >beast.base.inference.distribution.Gamma</map>
+<map name="LaplaceDistribution" >beast.base.inference.distribution.LaplaceDistribution</map>
+<map name="prior" >beast.base.inference.distribution.Prior</map>
+<map name="InverseGamma" >beast.base.inference.distribution.InverseGamma</map>
+<map name="OneOnX" >beast.base.inference.distribution.OneOnX</map>
 
-<run id="mcmc" spec="beast.coupledMCMC.CoupledMCMC"  chainLength="25000000" storeEvery="10000" deltaTemperature="0.05" chains="4" resampleEvery="1000">
+<run id="mcmc" spec="coupledMCMC.CoupledMCMC"  chainLength="25000000" storeEvery="10000" deltaTemperature="0.05" chains="4" resampleEvery="1000">
     <state id="state" storeEvery="5000">
         <tree id="Tree.t:hcv" name="stateNode">
             <taxonset id="TaxonSet.hcv" spec="TaxonSet">
@@ -106,18 +106,18 @@ name="alignment">
         <parameter id="freqParameter.s:hcv" dimension="4" lower="0.0" name="stateNode" upper="1.0">0.25</parameter>
     </state>
 
-    <init id="RandomTree.t:hcv" spec="beast.evolution.tree.RandomTree" estimate="false" initial="@Tree.t:hcv" taxa="@hcv">
+    <init id="RandomTree.t:hcv" spec="beast.base.evolution.tree.coalescent.RandomTree" estimate="false" initial="@Tree.t:hcv" taxa="@hcv">
         <populationModel id="ConstantPopulation0.t:hcv" spec="ConstantPopulation">
             <parameter id="randomPopSize.t:hcv" name="popSize">1.0</parameter>
         </populationModel>
     </init>
 
-    <distribution id="posterior" spec="util.CompoundDistribution">
-        <distribution id="prior" spec="util.CompoundDistribution">
+    <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
+        <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
             <distribution id="BayesianSkyline.t:hcv" spec="BayesianSkyline" groupSizes="@bGroupSizes.t:hcv" popSizes="@bPopSizes.t:hcv">
-                <treeIntervals id="BSPTreeIntervals.t:hcv" spec="TreeIntervals" tree="@Tree.t:hcv"/>
+                <treeIntervals id="BSPTreeIntervals.t:hcv" spec="beast.base.evolution.tree.TreeIntervals" tree="@Tree.t:hcv"/>
             </distribution>
-            <distribution id="MarkovChainedPopSizes.t:hcv" spec="beast.math.distributions.MarkovChainDistribution" jeffreys="true" parameter="@bPopSizes.t:hcv"/>
+            <distribution id="MarkovChainedPopSizes.t:hcv" spec="beast.base.inference.distribution.MarkovChainDistribution" jeffreys="true" parameter="@bPopSizes.t:hcv"/>
             <prior id="GammaShapePrior.s:hcv" name="distribution" x="@gammaShape.s:hcv">
                 <Exponential id="Exponential.0" name="distr">
                     <parameter id="RealParameter.0" lower="0.0" name="mean" upper="0.0">1.0</parameter>
@@ -154,7 +154,7 @@ name="alignment">
                 </Gamma>
             </prior>
         </distribution>
-        <distribution id="likelihood" spec="util.CompoundDistribution" useThreads="true">
+        <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution" useThreads="true">
             <distribution id="treeLikelihood.hcv" spec="ThreadedTreeLikelihood" data="@hcv" tree="@Tree.t:hcv">
                 <siteModel id="SiteModel.s:hcv" spec="SiteModel" gammaCategoryCount="4" shape="@gammaShape.s:hcv">
                     <parameter id="mutationRate.s:hcv" estimate="false" name="mutationRate">1.0</parameter>
@@ -164,7 +164,7 @@ name="alignment">
                         <frequencies id="estimatedFreqs.s:hcv" spec="Frequencies" frequencies="@freqParameter.s:hcv"/>
                     </substModel>
                 </siteModel>
-                <branchRateModel id="StrictClock.c:hcv" spec="beast.evolution.branchratemodel.StrictClockModel">
+                <branchRateModel id="StrictClock.c:hcv" spec="beast.base.evolution.branchratemodel.StrictClockModel">
                     <parameter id="clockRate.c:hcv" estimate="false" name="clock.rate">7.9E-4</parameter>
                 </branchRateModel>
             </distribution>
@@ -208,12 +208,12 @@ name="alignment">
     </operator>
 
     <logger id="tracelog" fileName="$(filebase).log" logEvery="1000" model="@posterior" sanitiseHeaders="true" sort="smart">
-        <log id="DummyLogger" spec="beast.coupledMCMC.DummyLogger"/>
+        <log id="DummyLogger" spec="coupledMCMC.DummyLogger"/>
         <log idref="posterior"/>
         <log idref="likelihood"/>
         <log idref="prior"/>
         <log idref="treeLikelihood.hcv"/>
-        <log id="TreeHeight.t:hcv" spec="beast.evolution.tree.TreeHeightLogger" tree="@Tree.t:hcv"/>
+        <log id="TreeHeight.t:hcv" spec="beast.base.evolution.tree.TreeStatLogger" tree="@Tree.t:hcv"/>
         <log idref="gammaShape.s:hcv"/>
         <log idref="rateAC.s:hcv"/>
         <log idref="rateAG.s:hcv"/>
@@ -234,7 +234,7 @@ name="alignment">
     </logger>
 
     <logger id="treelog.t:hcv" fileName="$(filebase).trees" logEvery="1000" mode="tree">
-        <log id="TreeWithMetaDataLogger.t:hcv" spec="beast.evolution.tree.TreeWithMetaDataLogger" tree="@Tree.t:hcv"/>
+        <log id="TreeWithMetaDataLogger.t:hcv" spec="beast.base.evolution.TreeWithMetaDataLogger" tree="@Tree.t:hcv"/>
     </logger>
 
 </run>
