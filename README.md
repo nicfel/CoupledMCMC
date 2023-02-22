@@ -47,7 +47,7 @@ To do so, go to the line with:
 To have a run with coupled MCMC, we have to replace that one line with:
 
 ```
-<run id="mcmc" spec="beast.coupledMCMC.CoupledMCMC" chainLength="100000000" storeEvery="1000000" deltaTemperature="0.025" chains="2" resampleEvery="10000">
+<run id="mcmc" spec="coupledMCMC.CoupledMCMC" chainLength="100000000" storeEvery="1000000" deltaTemperature="0.025" chains="2" resampleEvery="10000">
 ```
 * `chainLength="100000000"` defines for how many iterations the chains is run
 * `deltaTemperature="0.025"` defines the temperature difference between the chain *n* and chain *n-1*. This value should be changed such that the acceptance probability of a swap is between 0.25 and 0.6
