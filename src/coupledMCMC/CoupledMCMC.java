@@ -49,7 +49,7 @@ import org.apache.commons.math.distribution.BetaDistributionImpl;
 )		
 @Description("Parallel Metropolis Coupled Markov Chain Monte Carlo")
 public class CoupledMCMC extends MCMC {
-	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel (default 2)", 2);
+	public Input<Integer> nrOfChainsInput = new Input<Integer>("chains", " number of chains to run in parallel", 2);
 	public Input<Integer> resampleEveryInput = new Input<Integer>("resampleEvery", "number of samples in between resampling (and possibly swappping) states", 100);
 	public Input<String> tempDirInput = new Input<>("tempDir","directory where temporary files are written","");
 	
@@ -263,7 +263,7 @@ public class CoupledMCMC extends MCMC {
 		if (restoreFromFile){
 			System.out.println("restoring from file, printing to screen but not to loggers will start again from 0");
 			System.out.println("we further assume that all chains ended in the same state, if logging heated chains" +
-			" the different heated chains can have different amount of interations");
+			" the different heated chains can have different amount of iterations");
 		}		
 		
 	}
@@ -271,7 +271,7 @@ public class CoupledMCMC extends MCMC {
 	private double getTemperature(int i){
 		if (spacing==Spacing.Geometric) {
 			return i*deltaTemperature;
-		}else {
+		} else {
 			double beta=0;
 			if (deltaTemperature>0) {
 				try {

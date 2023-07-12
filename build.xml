@@ -15,7 +15,7 @@
   <!-- Directories necessary for all BEAST 2 packages -->
   <property name="doc" location="doc"/>
   <property name="examples" location="examples"/>
-  <property name="templates" location="templates"/>
+  <property name="templates" location="fxtemplates"/>
 
   <!-- Names of temporary build/test directories -->
   <property name="build" location="build"/>
@@ -63,7 +63,7 @@
            destdir="${build-beast}/${beastAr}/build" includeantruntime="false">
       <classpath>
 	<pathelement path="${classpath}"/>
-	<fileset dir="${build-beast}/${beastAr}/lib" includes="*.jar"/>
+		<fileset dir="${build-beast}/${beastAr}/lib" includes="*.jar"/>
       </classpath>
     </javac>
     <jar jarfile="${build-lib}/beast2.jar" basedir="${build-beast}/${beastAr}/build" />
@@ -79,6 +79,7 @@
     <javac target="${targetVersion}" source="${sourceVersion}" srcdir="${src}" destdir="${build}" includeantruntime="false">
       <classpath>
 	<pathelement path="${classpath}"/>
+	<pathelement path="../BeastFX/build"/>
 	<fileset dir="${build-lib}" includes="*.jar"/>
       </classpath>
     </javac>
@@ -156,7 +157,7 @@
     </copy>
 
     <mkdir dir="${templates}" />
-    <copy todir="${pack}/templates">
+    <copy todir="${pack}/fxtemplates">
       <fileset dir="${templates}" includes="*.xml" />
     </copy>
 
