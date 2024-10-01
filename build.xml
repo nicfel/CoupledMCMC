@@ -38,8 +38,8 @@
 
     <!-- Read package name and version from xml file -->
     <xmlproperty file="version.xml" prefix="fromVersionFile" />
-    <property name="projName" value="${fromVersionFile.addon(name)}" />
-    <property name="projVersion" value="${fromVersionFile.addon(version)}" />
+    <property name="projName" value="${fromVersionFile.package(name)}" />
+    <property name="projVersion" value="${fromVersionFile.package(version)}" />
 
     <mkdir dir="${build}"/>
     <mkdir dir="${build-lib}"/>
