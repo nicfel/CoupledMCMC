@@ -1,4 +1,4 @@
-<addon name="CoupledMCMC" version="1.2.1">
+<package name="CoupledMCMC" version="1.2.2">
     <depends on='BEAST.base' atleast='2.7.5'/>
     <depends on='BEAST.app' atleast='2.7.5'/>
   
@@ -7,6 +7,10 @@
               args=""
             />
 
+	<packageapp description="Server for running MC3 remotely: for every chain (hot or cold) one server should be running"
+        class="coupledMCMC.RemoteMC3Server"
+        args=""/>
+        
    <service type="beast.base.core.BEASTInterface">
         <provider classname="coupledMCMC.CoupledLogger"/>
         <provider classname="coupledMCMC.CoupledMCMC"/>
@@ -22,4 +26,4 @@
         <provider classname="coupledMCMC.SubsampledTreeLikelihood"/>
     </service>
 
-</addon>
+</package>

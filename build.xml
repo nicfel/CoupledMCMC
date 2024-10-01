@@ -75,12 +75,14 @@
   </target>
 
   <!-- Compile -->
-  <target name="compile" depends="init, get-beast">
+  <target name="compile" depends="init">
     <javac target="${targetVersion}" source="${sourceVersion}" srcdir="${src}" destdir="${build}" includeantruntime="false">
+  	  <include name="coupledMCMC/**" />
       <classpath>
-	<pathelement path="${classpath}"/>
-	<pathelement path="../BeastFX/build"/>
-	<fileset dir="${build-lib}" includes="*.jar"/>
+		<pathelement path="${classpath}"/>
+		<pathelement path="../beast2/build"/>
+		<pathelement path="../BeastFX/build"/>
+		<fileset dir="${build-lib}" includes="*.jar"/>
       </classpath>
     </javac>
   </target>
@@ -136,13 +138,17 @@
     <mkdir dir="${pack}/lib"/>
     <mkdir dir="${pack}/doc"/>
 
-    <jar jarfile="${pack}/${fullName}.src.jar" basedir="${src}" />
-
+    <jar jarfile="${pack}/${fullName}.src.jar" basedir="${src}" >
+  	  <include name="coupledMCMC/**" />
+	</jar>
+	
     <mkdir dir="${lib}" />
     <copy todir="${pack}/lib">
       <fileset dir="${lib}" includes="*.jar" />
     </copy>
-    <jar jarfile="${pack}/lib/${fullName}.jar" basedir="${build}" />
+    <jar jarfile="${pack}/lib/${fullName}.jar" basedir="${build}">
+<!-->    	<include name="coupleMCMC/**" />-->
+    </jar>
 
     <copy file="README.md" tofile="${pack}/README" />
     <copy file="COPYING" todir="${pack}" />
@@ -271,5 +277,29 @@
     <echo>That's it!  Happy coding!</echo>
     
   </target>
+
+
+        <condition property="isWindows"><os family="windows" /></condition>
+        <condition property="isLinux"><and><os family="unix"/><not><os family="mac"/></not></and></condition>
+        <condition property="isMac"><os family="mac" /></condition>
+
+        <target name="installLinux" depends="build" if="isLinux">
+                <mkdir dir="${user.home}/.beast/2.7/${projName}"/>
+                        <unzip src="${dist}/${fullName}.zip" dest="${user.home}/.beast/2.7/${projName}"/>
+        </target>
+
+        <target name="installMac" depends="build" if="isMac">
+                <mkdir dir="${user.home}/.beast/2.7/${projName}"/>
+                        <unzip src="${dist}/${fullName}.zip" dest="${user.home}/Library/Application Support/BEAST/2.7/${projName}"/>
+        </target>
+
+        <target name="installWindows" depends="build" if="isWindows">
+                <mkdir dir="${user.home}/BEAST/2.7/${projName}"/>
+                        <unzip src="${dist}/${fullName}.zip" dest="${user.home}/BEAST/2.7/${projName}"/>
+        </target>
+
+        <target name="install" depends="installWindows,installMac,installLinux">
+        </target>
+
 
 </project>
