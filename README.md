@@ -56,7 +56,8 @@ To have a run with coupled MCMC, we have to replace that one line with:
 
 ## Citation
 
-Müller, Nicola Felix, and Remco Bouckaert. "Coupled MCMC in BEAST 2." bioRxiv (2019): 603514. ([abstract](https://www.biorxiv.org/content/10.1101/603514v1.abstract), [pdf](https://www.biorxiv.org/content/biorxiv/early/2019/04/09/603514.full.pdf));
+Müller NF, Bouckaert RR. Adaptive Metropolis-coupled MCMC for BEAST 2. PeerJ. 2020 Sep 16;8:e9473. [DOI:10.7717/peerj.9473](https://doi.org/10.7717/peerj.9473)
+BioRxiv preprint (2019): 603514. ([abstract](https://www.biorxiv.org/content/10.1101/603514v1.abstract), [pdf](https://www.biorxiv.org/content/biorxiv/early/2019/04/09/603514.full.pdf));
 
 
 Parallel Metropolis coupled Markov chain Monte Carlo for Bayesian phylogenetic inference 
